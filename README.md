@@ -15,7 +15,7 @@ The script will require a package (maybe we should avoid this at some point).
 
        pip install --user numpy numpy-quaternion
 
-Change the directory to store files in the .../CarND-Capstone/ros/src/tl_detector/tl_detector.py file
+Change the directory to store files in the file ".../CarND-Capstone/ros/src/tl_detector/tl_detector.py"
 
        self.dirData = os.path.join("/home/pistol/DataFolder/SelfDriving/TrafficLights")
 
