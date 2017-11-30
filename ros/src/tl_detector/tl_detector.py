@@ -8,8 +8,14 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from light_classification.tl_classifier import TLClassifier
 import tf
+import os
 import cv2
 import yaml
+import time
+import numpy as np
+from scipy import spatial
+from tf.transformations import euler_from_quaternion, quaternion_from_euler
+import quaternion
 
 STATE_COUNT_THRESHOLD = 3
 
@@ -36,6 +42,8 @@ class TLDetector(object):
         sub6 = rospy.Subscriber('/image_color', Image, self.image_cb)
 
         config_string = rospy.get_param("/traffic_light_config")
+        
+        self.dirData = os.path.join("/home/pistol/DataFolder/SelfDriving/TraficLights")
         self.config = yaml.load(config_string)
 
         self.upcoming_red_light_pub = rospy.Publisher('/traffic_waypoint', Int32, queue_size=1)
@@ -43,11 +51,17 @@ class TLDetector(object):
         self.bridge = CvBridge()
         self.light_classifier = TLClassifier()
         self.listener = tf.TransformListener()
-
+        self.idx = 0
+        self.waypointlist = np.array([])
         self.state = TrafficLight.UNKNOWN
         self.last_state = TrafficLight.UNKNOWN
         self.last_wp = -1
         self.state_count = 0
+        self.tree = []
+        self.image_count = 0
+        self.waypoints_prepared = False
+        self.waypoints_received = False
+        self.idx_traffic_light_found = False
 
         rospy.spin()
 
@@ -55,7 +69,9 @@ class TLDetector(object):
         self.pose = msg
 
     def waypoints_cb(self, waypoints):
+        print("WAYPOINTS_RECEIVED")
         self.waypoints = waypoints
+        self.waypoints_received = True
 
     def traffic_cb(self, msg):
         self.lights = msg.lights
@@ -68,8 +84,9 @@ class TLDetector(object):
             msg (Image): image from car-mounted camera
 
         """
+        self.camera_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
         self.has_image = True
-        self.camera_image = msg
+        self.image_count = self.image_count+1
         light_wp, state = self.process_traffic_lights()
 
         '''
@@ -100,8 +117,34 @@ class TLDetector(object):
             int: index of the closest waypoint in self.waypoints
 
         """
-        #TODO implement
-        return 0
+        #
+        useKDTree = True
+        
+        if(self.waypoints_prepared == False):
+            self.waypointlist = np.array([[waypoint.pose.pose.position.x,
+                                           waypoint.pose.pose.position.y,
+                                           waypoint.pose.pose.orientation.x,
+                                           waypoint.pose.pose.orientation.y,
+                                           waypoint.pose.pose.orientation.z,
+                                           waypoint.pose.pose.orientation.w] for waypoint in self.waypoints.waypoints])
+            
+            if useKDTree:
+                self.tree = spatial.KDTree(self.waypointlist[:,0:2],1)
+            self.waypoints_prepared = True
+            
+        if(self.waypoints_prepared):
+            if useKDTree:
+                dist,idxs = self.tree.query(pose)
+                self.idx = idxs
+            else:
+                dist = np.sum(np.power(pose-self.waypointlist[:,0:2],2),axis=1)
+                self.idx = np.argmin(dist)
+        else:
+            self.idx = 0
+            dist = 0
+            
+        #print("GetClosestWayPoint: ", self.idx,dist)
+        return self.idx
 
     def get_light_state(self, light):
         """Determines the current color of the traffic light
@@ -117,10 +160,8 @@ class TLDetector(object):
             self.prev_light_loc = None
             return False
 
-        cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
-
         #Get classification
-        return self.light_classifier.get_classification(cv_image)
+        return self.light_classifier.get_classification(self.camera_image)
 
     def process_traffic_lights(self):
         """Finds closest visible traffic light, if one exists, and determines its
@@ -133,18 +174,94 @@ class TLDetector(object):
         """
         light = None
 
-        # List of positions that correspond to the line to stop in front of for a given intersection
-        stop_line_positions = self.config['stop_line_positions']
-        if(self.pose):
-            car_position = self.get_closest_waypoint(self.pose.pose)
-
-        #TODO find the closest visible traffic light (if one exists)
-
+        idx_waypoint_traffic_light = -1
+        
+        if self.waypoints_received:
+            # List of positions that correspond to the line to stop in front of for a given intersection
+            stop_line_positions = np.array(self.config['stop_line_positions'])
+            #TODO find the closest visible traffic light (if one exists)
+            idxs_waypoint_stop = self.get_closest_waypoint(stop_line_positions)
+            
+            
+            if(self.pose):
+                vehicle_pose = np.array([[ self.pose.pose.position.x,self.pose.pose.position.y]])
+                idx_waypoint_car = self.get_closest_waypoint(vehicle_pose)        
+                
+            
+            idx_traffic_light = np.argmax((idxs_waypoint_stop-idx_waypoint_car)>0)
+            idx_waypoint_traffic_light = idxs_waypoint_stop[idx_traffic_light]
+#            print(idxs_waypoint_stop,idx_waypoint_car,idxs_waypoint_stop-idx_waypoint_car,idx_traffic_light,idx_waypoint_traffic_light)
+        
+            if(self.lights):
+                tmpLight = self.lights[idx_traffic_light]
+                poseVehicle = self.pose.pose
+                
+                poseLight = self.waypointlist[idx_waypoint_traffic_light,:]
+                orientationLight = poseLight[2:]
+                positionLight = poseLight[:2]
+                
+                diff_position = positionLight-np.array([ poseVehicle.position.x,poseVehicle.position.y])
+                # Use Pose
+                usePose = True
+                if usePose:
+                    o1 = orientationLight
+                    o2 = poseVehicle.orientation
+                    # Angle difference between light-orientation and vehicle-orientation
+                    q3 = np.quaternion(o1[0],o1[1],o1[2],o1[3]) * np.quaternion(o2.x,o2.y,o2.z,o2.w).inverse()
+                    diff_angle = euler_from_quaternion(quaternion.as_float_array(q3))
+                    diff_angle = diff_angle[2]
+                else:
+                    # NOT WORKING
+                    diff_angle = 1.5707963267948966-np.arctan2(diff_position[1],diff_position[0]) #????
+                # Distance between ligt and vehicle
+                diff_dist = np.sqrt(np.sum(np.power(diff_position,2)))
+                
+                print("     dist:", diff_dist ,"diff_position:", diff_position, "angle: ", diff_angle)
+                
+                
+                in_view_dist = 140.0
+                in_view_angle = 0.13
+                
+                
+                # Store images for training.
+                if self.has_image:
+                    
+                    save_factor = 10
+                    saveImage = False
+                    if (tmpLight.state==0): # RED LIGHT --> Slow save factor
+                        save_factor = 10
+                    elif(tmpLight.state==1):  # Yellow LIGHT --> Faster save factor
+                        save_factor = 2
+                    elif(tmpLight.state==2):  # Green LIGHT --> Faster save factor
+                        save_factor = 2
+                    
+                    # Traffic light in view
+                    if (diff_dist < in_view_dist ) and (np.abs(diff_angle)<in_view_angle):          
+                        saveImage = True
+                        strState = str(tmpLight.state)
+                        print("TrafficLight in view: ")
+                    
+                    # Traffic light out of view
+                    if (diff_dist > (in_view_dist+100) ) or (np.abs(diff_angle)>(in_view_angle+0.05)):
+                        saveImage = True
+                        save_factor = 10
+                        strState = str(4)
+                        print("TrafficLight definitly out off view: ")
+                        
+                    if saveImage and (np.mod(self.image_count,save_factor)==0):
+                        #tmpName = str(np.round(time.time(),decimals=2)).replace(".","_")
+                        tmpName = str(self.image_count).zfill(4)
+                        dirOut = os.path.join(self.dirData,tmpName+"_"+strState+"_"+ str(np.round(diff_dist)) + '.jpg')
+                        cv2.imwrite(dirOut,self.camera_image)
+                        print("SaveImage")
+                    
         if light:
             state = self.get_light_state(light)
             return light_wp, state
+        
         self.waypoints = None
-        return -1, TrafficLight.UNKNOWN
+        
+        return idx_waypoint_traffic_light, TrafficLight.UNKNOWN
 
 if __name__ == '__main__':
     try:
