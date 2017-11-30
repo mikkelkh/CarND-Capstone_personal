@@ -109,7 +109,7 @@ class DBWNode(object):
         self.ego_y = msg.pose.position.y
         self.ego_z = msg.pose.position.z
         yaw = self.get_yaw(msg.pose.orientation)
-        rospy.logwarn("ego x=%f y=%f z=%f yaw=%f", self.ego_x, self.ego_y, self.ego_z, yaw)
+        #rospy.logwarn("ego x=%f y=%f z=%f yaw=%f", self.ego_x, self.ego_y, self.ego_z, yaw)
 
     def twist_cmd_callback(self, msg):
         self.proposed_velocity = msg.twist # linear and angular
