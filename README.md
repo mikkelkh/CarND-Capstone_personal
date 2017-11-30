@@ -8,6 +8,25 @@ This is the project repo for the final project of the Udacity Self-Driving Car N
 * [Oleg Potkin](https://github.com/olpotkin) - olpotkin@gmail.com
 * [Sebastian Stümper](https://github.com/sstuemper) - sebastian.stuemper@gmail.com
 
+
+### Collecting traffic light data in the Powerthrough Team
+This is only possible in the detector-branch. 
+The script will require a package (maybe we should avoid this at some point).
+
+       pip install --user numpy numpy-quaternion
+
+Change the directory to store files in the .../CarND-Capstone/ros/src/tl_detector/tl_detector.py file
+
+       self.dirData = os.path.join("/home/pistol/DataFolder/SelfDriving/TrafficLights")
+
+Run the simulator and use the following instructions to record data. 
+
+       cd [XXX]/CarND-Capstone/ros
+       source devel/setup.bash
+       rosrun launch/styx.launch
+
+A small script (Demo_SimpleReadTrafficLightData) for reading data is provided in the [XXX]/CarND-Capstone folder. 
+
 ### Architecture Diagram
 
 
