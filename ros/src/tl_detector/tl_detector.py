@@ -42,7 +42,7 @@ class TLDetector(object):
         self.stop_line_positions = self.config['stop_line_positions']
         self.stop_line_waypoints = []
 
-        self.upcoming_red_light_pub = rospy.Publisher('/traffic_waypoint', Int32, queue_size=2)
+        self.upcoming_red_light_pub = rospy.Publisher('/traffic_waypoint', Int32, queue_size=1)
 
         self.bridge = CvBridge()
         self.light_classifier = TLClassifier()
