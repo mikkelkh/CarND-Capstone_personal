@@ -3,10 +3,13 @@
 import rospy
 from geometry_msgs.msg import PoseStamped
 from styx_msgs.msg import Lane, Waypoint
+from std_msgs.msg import Int32
+
 
 from tf.transformations import euler_from_quaternion
 
 import math
+import copy
 
 '''
 This node will publish waypoints from the car's current position to some `x` distance ahead.
@@ -34,6 +37,7 @@ class WaypointUpdater(object):
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
 
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
+        rospy.Subscriber('/traffic_waypoint', Int32, self.traffic_cb)
 
 
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
@@ -48,9 +52,12 @@ class WaypointUpdater(object):
 
         self.frame_id = None
         self.waypoints = None
+        self.backup_waypoints = None
         self.num_waypoints = None
         self.closest_wp_index = None
         self.closest_wp_dist = None
+
+        self.traffic_wp_index = None
 
         #rospy.spin()
         self.loop()
@@ -72,7 +79,8 @@ class WaypointUpdater(object):
 
     def traffic_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
-        pass
+        self.traffic_wp_index = msg.data
+        rospy.logwarn("WP_UPDATER: traffic_waypoint=%d", msg.data)
 
     def obstacle_cb(self, msg):
         # TODO: Callback for /obstacle_waypoint message. We will implement it later
@@ -94,9 +102,35 @@ class WaypointUpdater(object):
                 #self.publish(throttle, brake, steer)
                 rospy.logwarn("WP_UPDATER closest_wp_index=%d closest_wp_dist=%f", self.closest_wp_index, self.closest_wp_dist)
 
+                lookahead = LOOKAHEAD_WPS
+                #traffic_wp_offset = 0
+                #if self.traffic_wp_index > 0:
+                #    traffic_wp_offset = self.traffic_wp_index - self.closest_wp_index
+                #    if traffic_wp_offset > 0:
+                #        lookahead = traffic_wp_offset # we will stop there
+
+                #rospy.logwarn("WP_UPDATER: ========> lookahead=%f", lookahead)
+
                 final_waypoints = []
-                for i in range(LOOKAHEAD_WPS):
-                    final_waypoints.append(self.waypoints[ (self.closest_wp_index + i) % self.num_waypoints ])
+                for i in range(lookahead):
+                    final_waypoints.append(copy.deepcopy(self.waypoints[ (self.closest_wp_index + i) % self.num_waypoints ]))
+
+                # handle Traffic light stop by a smooth velocity decrease
+                #if traffic_wp_offset > 0:
+                #    distance_to_stop = self.distance(self.waypoints, self.closest_wp_index, self.traffic_wp_index)
+                #    if distance_to_stop > 0:
+                #        current_velocity = self.get_waypoint_velocity(self.waypoints[self.closest_wp_index])
+                #        decrease_velocity_per_meter = (current_velocity - 0) / distance_to_stop
+                #        rospy.logwarn("WP_UPDATER: ========> decrease_velocity_per_meter=%f", decrease_velocity_per_meter)
+                #        decrease_velocity = 0
+                #        for wp in range(lookahead):
+                #            #distance_to_next_wp = self.distance(final_waypoints, wp, wp+1)
+                #            #decrease_velocity += decrease_velocity_per_meter * distance_to_next_wp
+                #            #rospy.logwarn("WP_UPDATER: ========> wp=%d decrease_velocity=%f", wp, decrease_velocity)
+                #            #velocity = self.get_waypoint_velocity(final_waypoints[wp])
+                #            #velocity -= decrease_velocity
+                #            #self.set_waypoint_velocity(final_waypoints, wp+1, velocity)
+                #            self.set_waypoint_velocity(final_waypoints, wp, 0)
 
                 lane_msg = Lane()
                 lane_msg.header.seq = self.msg_seq
