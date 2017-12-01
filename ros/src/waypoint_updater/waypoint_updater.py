@@ -93,20 +93,22 @@ class WaypointUpdater(object):
         # if first detection of red light => compute slow down path
         if msg.data > 0 and msg.data != self.traffic_wp_index: 
             rospy.logwarn("WP_UPDATER: start traffic_waypoint=%d", msg.data)
-            if traffic_wp_index > self.closest_wp_index:
-                distance_to_stop = self.distance(self.waypoints, self.closest_wp_index, traffic_wp_index)
+            closest_wp_index = self.closest_wp_index
+            closest_wp_index = max(closest_wp_index, traffic_wp_index - 75)
+            if traffic_wp_index > closest_wp_index:
+                distance_to_stop = self.distance(self.waypoints, closest_wp_index, traffic_wp_index)
                 if distance_to_stop > 0:
 
-                    current_velocity = self.get_waypoint_velocity(self.waypoints[self.closest_wp_index])
+                    current_velocity = self.get_waypoint_velocity(self.waypoints[closest_wp_index])
                     decrease_velocity_per_meter = (current_velocity - 0) / distance_to_stop
                     rospy.logwarn("WP_UPDATER: ========> decrease_velocity_per_meter=%f", decrease_velocity_per_meter)
 
-                    self.waypoints_modif_start = self.closest_wp_index + 1
+                    self.waypoints_modif_start = closest_wp_index + 1
                     self.waypoints_modif_end = traffic_wp_index
                     self.waypoints_modif = []
 
                     decrease_velocity = 0
-                    for wp in range(self.closest_wp_index, traffic_wp_index):
+                    for wp in range(closest_wp_index, traffic_wp_index):
                         distance_to_next_wp = self.distance(self.waypoints, wp, wp+1)
                         decrease_velocity += decrease_velocity_per_meter * distance_to_next_wp
                         #rospy.logwarn("WP_UPDATER: ========> wp=%d decrease_velocity=%f", wp, decrease_velocity)
