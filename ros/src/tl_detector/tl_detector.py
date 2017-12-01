@@ -80,12 +80,13 @@ class TLDetector(object):
                 wp_max = self.closest_wp_index + 200
             self.closest_wp_index = self.get_closest_wp_index(self.ego_x, self.ego_y, wp_min, wp_max)
 
-            # simulate traffic light RED/YELLOW detection
+            # simulate traffic light RED detection
             closest_light_red_index = -1
             closest_light_red_dist = 1e10
             for i in range(len(self.lights)):
                 light = self.lights[i]
-                if light.state == TrafficLight.RED or light.state == TrafficLight.YELLOW:
+                #if light.state == TrafficLight.RED or light.state == TrafficLight.YELLOW:
+                if light.state == TrafficLight.RED:
                     dist = self.stop_line_waypoints[i] - self.closest_wp_index
                     # something realistic in our Field Of View
                     if dist >= 0 and dist < 150 and dist  < closest_light_red_dist:
