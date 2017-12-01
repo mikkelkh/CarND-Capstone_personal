@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import TwistStamped, PoseStamped
 from styx_msgs.msg import Lane, Waypoint
 from std_msgs.msg import Int32
 
@@ -38,6 +38,8 @@ class WaypointUpdater(object):
 
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
         rospy.Subscriber('/traffic_waypoint', Int32, self.traffic_cb)
+        rospy.Subscriber("/current_velocity", TwistStamped, self.current_velocity_cb, queue_size=1)
+
 
 
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
@@ -52,10 +54,13 @@ class WaypointUpdater(object):
 
         self.frame_id = None
         self.waypoints = None
-        self.backup_waypoints = None
-        self.num_waypoints = None
         self.closest_wp_index = None
         self.closest_wp_dist = None
+
+        self.waypoints_modif_start = None
+        self.waypoints_modif_end = None
+        self.waypoints_modif = []
+        self.current_velocity = None
 
         self.traffic_wp_index = None
 
@@ -71,6 +76,10 @@ class WaypointUpdater(object):
         self.frame_id = msg.header.frame_id
         #rospy.logwarn("WP_UPDATER: ego x=%f y=%f z=%f yaw=%f", self.ego_x, self.ego_y, self.ego_z, self.ego_yaw)
 
+    def current_velocity_cb(self, msg):
+        # in [x, y] ego coord
+        self.current_velocity = msg.twist.linear.x
+
     def waypoints_cb(self, msg):
         # TODO: Implement
         self.waypoints = msg.waypoints
@@ -78,9 +87,48 @@ class WaypointUpdater(object):
         rospy.logwarn("WP_UPDATER: num_waypoints=%d", self.num_waypoints) # 10902
 
     def traffic_cb(self, msg):
+        traffic_wp_index = msg.data
         # TODO: Callback for /traffic_waypoint message. Implement
-        self.traffic_wp_index = msg.data
-        rospy.logwarn("WP_UPDATER: traffic_waypoint=%d", msg.data)
+
+        # if first detection of red light => compute slow down path
+        if msg.data > 0 and msg.data != self.traffic_wp_index: 
+            rospy.logwarn("WP_UPDATER: start traffic_waypoint=%d", msg.data)
+            if traffic_wp_index > self.closest_wp_index:
+                distance_to_stop = self.distance(self.waypoints, self.closest_wp_index, traffic_wp_index)
+                if distance_to_stop > 0:
+
+                    current_velocity = self.get_waypoint_velocity(self.waypoints[self.closest_wp_index])
+                    decrease_velocity_per_meter = (current_velocity - 0) / distance_to_stop
+                    rospy.logwarn("WP_UPDATER: ========> decrease_velocity_per_meter=%f", decrease_velocity_per_meter)
+
+                    self.waypoints_modif_start = self.closest_wp_index + 1
+                    self.waypoints_modif_end = traffic_wp_index
+                    self.waypoints_modif = []
+
+                    decrease_velocity = 0
+                    for wp in range(self.closest_wp_index, traffic_wp_index):
+                        distance_to_next_wp = self.distance(self.waypoints, wp, wp+1)
+                        decrease_velocity += decrease_velocity_per_meter * distance_to_next_wp
+                        #rospy.logwarn("WP_UPDATER: ========> wp=%d decrease_velocity=%f", wp, decrease_velocity)
+
+                        velocity = self.get_waypoint_velocity(self.waypoints[wp+1])
+                        rospy.logwarn("WP_UPDATER: ========> wp=%d initial_vel=%f", wp, velocity)
+                        velocity -= decrease_velocity
+                        velocity = max(0, velocity)
+
+                        self.waypoints_modif.append( self.get_waypoint_velocity(self.waypoints[wp+1]) )
+                        self.set_waypoint_velocity(self.waypoints, wp+1, velocity)
+                        rospy.logwarn("WP_UPDATER: ========> wp=%d decrease_velocity=%f planned_vel=%f", wp, decrease_velocity, velocity)
+
+            rospy.logwarn("WP_UPDATER: end traffic_waypoint=%d", msg.data)
+
+        # if end of red light => restore speed to original
+        if msg.data < 0 and msg.data != self.traffic_wp_index:
+            rospy.logwarn("WP_UPDATER: end of red light")
+            for wp in range(self.waypoints_modif_start, self.waypoints_modif_end + 1):
+                self.set_waypoint_velocity(self.waypoints, wp, self.waypoints_modif[wp - self.waypoints_modif_start])
+
+        self.traffic_wp_index = traffic_wp_index
 
     def obstacle_cb(self, msg):
         # TODO: Callback for /obstacle_waypoint message. We will implement it later
@@ -94,43 +142,20 @@ class WaypointUpdater(object):
                 if self.closest_wp_index is None:
                     wp_min = 0
                     wp_max = self.num_waypoints - 1
-                    self.closest_wp_index = self.get_closest_wp_index(wp_min, wp_max) 
                 else:
                     wp_min = self.closest_wp_index - LOOKAHEAD_WPS
                     wp_max = self.closest_wp_index + LOOKAHEAD_WPS
-                    self.closest_wp_index = self.get_closest_wp_index(wp_min, wp_max) 
-                #self.publish(throttle, brake, steer)
+
+                self.closest_wp_index = self.get_closest_wp_index(wp_min, wp_max) 
                 rospy.logwarn("WP_UPDATER closest_wp_index=%d closest_wp_dist=%f", self.closest_wp_index, self.closest_wp_dist)
 
-                lookahead = LOOKAHEAD_WPS
-                #traffic_wp_offset = 0
-                #if self.traffic_wp_index > 0:
-                #    traffic_wp_offset = self.traffic_wp_index - self.closest_wp_index
-                #    if traffic_wp_offset > 0:
-                #        lookahead = traffic_wp_offset # we will stop there
-
-                #rospy.logwarn("WP_UPDATER: ========> lookahead=%f", lookahead)
+                planned_vel = self.get_waypoint_velocity(self.waypoints[self.closest_wp_index])
+                current_vel = self.current_velocity
+                rospy.logwarn("WP_UPDATER current_vel=%d planned_vel=%f", current_vel, planned_vel)
 
                 final_waypoints = []
-                for i in range(lookahead):
-                    final_waypoints.append(copy.deepcopy(self.waypoints[ (self.closest_wp_index + i) % self.num_waypoints ]))
-
-                # handle Traffic light stop by a smooth velocity decrease
-                #if traffic_wp_offset > 0:
-                #    distance_to_stop = self.distance(self.waypoints, self.closest_wp_index, self.traffic_wp_index)
-                #    if distance_to_stop > 0:
-                #        current_velocity = self.get_waypoint_velocity(self.waypoints[self.closest_wp_index])
-                #        decrease_velocity_per_meter = (current_velocity - 0) / distance_to_stop
-                #        rospy.logwarn("WP_UPDATER: ========> decrease_velocity_per_meter=%f", decrease_velocity_per_meter)
-                #        decrease_velocity = 0
-                #        for wp in range(lookahead):
-                #            #distance_to_next_wp = self.distance(final_waypoints, wp, wp+1)
-                #            #decrease_velocity += decrease_velocity_per_meter * distance_to_next_wp
-                #            #rospy.logwarn("WP_UPDATER: ========> wp=%d decrease_velocity=%f", wp, decrease_velocity)
-                #            #velocity = self.get_waypoint_velocity(final_waypoints[wp])
-                #            #velocity -= decrease_velocity
-                #            #self.set_waypoint_velocity(final_waypoints, wp+1, velocity)
-                #            self.set_waypoint_velocity(final_waypoints, wp, 0)
+                for i in range(LOOKAHEAD_WPS):
+                    final_waypoints.append(self.waypoints[ (self.closest_wp_index + i) % self.num_waypoints ])
 
                 lane_msg = Lane()
                 lane_msg.header.seq = self.msg_seq
