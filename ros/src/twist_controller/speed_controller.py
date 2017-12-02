@@ -27,8 +27,7 @@ class SpeedController(object):
                 brake = math.fabs(torque)
 
             throttle = max(throttle, 0.)
-            #rospy.logwarn("DBWNode: target_vel=%f current_vel=%f desired_acc=%f", proposed_linear_vel, current_linear_vel, desired_acc)
-            rospy.logwarn("DBWNode: throttle=%f brake=%f", throttle, brake)
+            #rospy.logwarn("DBWNode: throttle=%f brake=%f", throttle, brake)
             return throttle, brake
         else:
             return 0.0, 0.0

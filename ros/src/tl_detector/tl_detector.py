@@ -137,7 +137,6 @@ class TLDetector(object):
                 stop_line_waypoint = self.get_closest_wp_index(x, y, 0, self.num_waypoints)
                 self.stop_line_waypoints.append(stop_line_waypoint)
                 print(stop_line_waypoint)
-            rospy.logwarn("TL_DETECTOR: num_waypoints=%d", self.num_waypoints) # 10902
 
     def traffic_cb(self, msg):
         self.lights = msg.lights
