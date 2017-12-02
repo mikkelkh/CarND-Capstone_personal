@@ -43,8 +43,6 @@ class DBWNode(object):
     def __init__(self):
         rospy.init_node('dbw_node')
 
-        rospy.logwarn("DBWNode started")
-
         vehicle_mass = rospy.get_param('~vehicle_mass', 1736.35)
         fuel_capacity = rospy.get_param('~fuel_capacity', 13.5)
         brake_deadband = rospy.get_param('~brake_deadband', .1)
@@ -94,8 +92,6 @@ class DBWNode(object):
 
     def base_waypoints_callback(self, msg):
         num_waypoints = len(msg.waypoints)
-        rospy.logwarn("num_waypoints=%d", num_waypoints) # 10902
-        #for i in range(500,510):
         for i in range(0,20):
             wp = msg.waypoints[i]
             x = wp.pose.pose.position.x
@@ -113,7 +109,7 @@ class DBWNode(object):
             #theta_x = wp.twist.twist.angular.x
             #theta_y = wp.twist.twist.angular.y
             #theta_z = wp.twist.twist.angular.z
-            rospy.logwarn("wp[%d] x=%f y=%f z=%f yaw=%f theta_z=%f vx=%f", i, x, y, z, yaw, theta_z, vx)
+            #rospy.logwarn("wp[%d] x=%f y=%f z=%f yaw=%f theta_z=%f vx=%f", i, x, y, z, yaw, theta_z, vx)
 
     def current_pose_callback(self, msg):
         self.ego_x = msg.pose.position.x
@@ -136,10 +132,8 @@ class DBWNode(object):
         self.dbw_enabled = msg.data
 
     def loop(self):
-        rospy.logwarn("DBWNode loop started")
         rate = rospy.Rate(DBW_FREQUENCY) # 50Hz
         while not rospy.is_shutdown():
-            # rospy.logwarn("DBWNode looping\n")
             # TODO: Get predicted throttle, brake, and steering using `twist_controller`
             # You should only publish the control commands if dbw is enabled
             # throttle, brake, steering = self.controller.control(<proposed linear velocity>,
