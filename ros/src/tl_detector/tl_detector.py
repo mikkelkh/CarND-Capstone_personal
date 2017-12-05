@@ -8,7 +8,6 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from light_classification.tl_classifier import TLClassifier
 import tf
-import cv2
 import yaml
 
 import math
@@ -45,7 +44,6 @@ class TLDetector(object):
         self.upcoming_red_light_pub = rospy.Publisher('/traffic_waypoint', Int32, queue_size=1)
 
         self.bridge = CvBridge()
-        self.light_classifier = TLClassifier()
         self.listener = tf.TransformListener()
 
         self.state = TrafficLight.UNKNOWN
@@ -59,14 +57,32 @@ class TLDetector(object):
 
         self.num_waypoints = 0
         self.light_wp = -1
+        self.state_red_count = -1
 
         # TEMPORARY just for testing purposes in simulation without real TL detector
         #sub6 = rospy.Subscriber('/image_color', Image, self.image_cb)
         sub6 = rospy.Subscriber('/image_color', Image, self.image_simu_cb)
 
-        rospy.spin()
+        self.light_classifier = TLClassifier()
+
+        #rospy.spin()
+        self.loop()
 
     # -----------------------------------------------------------------------------------
+
+    def loop(self):
+        rate = rospy.Rate(4) # every 250 ms: GPU decoding is arround 100 ms on GTX 1080 TI
+        while not rospy.is_shutdown():
+            if self.camera_image is not None:
+                cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+                #Get classification
+                state = self.light_classifier.get_classification(cv_image)
+                if state == TrafficLight.RED:
+                    print('RED')
+                else:
+                    print('NOT RED')
+            rate.sleep()
+
 
     def image_simu_cb(self, msg):
         if self.num_waypoints > 0 and self.ego_x is not None:
@@ -79,6 +95,8 @@ class TLDetector(object):
                 wp_min = self.closest_wp_index - 200
                 wp_max = self.closest_wp_index + 200
             self.closest_wp_index = self.get_closest_wp_index(self.ego_x, self.ego_y, wp_min, wp_max)
+
+            self.camera_image = msg
 
             # simulate traffic light RED detection
             closest_light_red_index = -1
