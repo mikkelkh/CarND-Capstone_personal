@@ -13,6 +13,7 @@ import yaml
 import math
 
 STATE_COUNT_THRESHOLD = 3
+STATE_COUNT_THRESHOLD = 2
 
 class TLDetector(object):
     def __init__(self):
@@ -61,7 +62,7 @@ class TLDetector(object):
 
         # TEMPORARY just for testing purposes in simulation without real TL detector
         #sub6 = rospy.Subscriber('/image_color', Image, self.image_cb)
-        sub6 = rospy.Subscriber('/image_color', Image, self.image_simu_cb)
+        sub6 = rospy.Subscriber('/image_color', Image, self.image_callback)
 
         self.light_classifier = TLClassifier()
 
@@ -72,61 +73,61 @@ class TLDetector(object):
 
     def loop(self):
         # every 250 ms is OK on GTX 1080 TI: GPU decoding is arround 120 ms on GTX 1080 TI
-        # every 1 sec, so we have some margin on lower end GPUs: eg on GTX 980 TI decoding is around 250 ms
+        # every 500 ms, so we have some margin on lower end GPUs: eg on GTX 980 TI decoding is around 250 ms
         # TODO: test on GTX 1050 as well
-        rate = rospy.Rate(1)
+        rate = rospy.Rate(2)
         while not rospy.is_shutdown():
             if self.camera_image is not None:
-                cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
-                #Get classification
-                state = self.light_classifier.get_classification(cv_image)
-                if state == TrafficLight.RED:
-                    print('RED')
+
+                # search wp closest to our car
+                if self.closest_wp_index is None:
+                    wp_min = 0
+                    wp_max = self.num_waypoints - 1
                 else:
-                    print('NOT RED')
-            rate.sleep()
+                    wp_min = self.closest_wp_index - 200
+                    wp_max = self.closest_wp_index + 200
 
+                self.closest_wp_index = self.get_closest_wp_index(self.ego_x, self.ego_y, wp_min, wp_max)
 
-    def image_simu_cb(self, msg):
-        if self.num_waypoints > 0 and self.ego_x is not None:
-
-            # search wp closest to our car
-            if self.closest_wp_index is None:
-                wp_min = 0
-                wp_max = self.num_waypoints - 1
-            else:
-                wp_min = self.closest_wp_index - 200
-                wp_max = self.closest_wp_index + 200
-            self.closest_wp_index = self.get_closest_wp_index(self.ego_x, self.ego_y, wp_min, wp_max)
-
-            self.camera_image = msg
-
-            # simulate traffic light RED detection
-            closest_light_red_index = -1
-            closest_light_red_dist = 1e10
-            for i in range(len(self.lights)):
-                light = self.lights[i]
-                #if light.state == TrafficLight.RED or light.state == TrafficLight.YELLOW:
-                if light.state == TrafficLight.RED:
+                closest_light_red_index = -1
+                closest_light_red_dist = 1e10
+                for i in range(len(self.lights)):
+                    light = self.lights[i]
                     dist = self.stop_line_waypoints[i] - self.closest_wp_index
-                    # something realistic in our Field Of View
                     if dist >= 0 and dist < 150 and dist  < closest_light_red_dist:
                         closest_light_red_dist = dist
                         closest_light_red_index = i
 
-            if (closest_light_red_index >= 0):
-                # RED or YELLOW light detected
-                self.light_wp = self.stop_line_waypoints[closest_light_red_index]
-                self.state_red_count = STATE_COUNT_THRESHOLD
-            else:
-                self.state_red_count -= 1
+                cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+                #Get classification
+                state = self.light_classifier.get_classification(cv_image)
 
-            if self.state_red_count > 0:
-                print("traffic_waypoint=" + str(self.light_wp))
-                self.upcoming_red_light_pub.publish(Int32(self.light_wp))
-            else:
-                self.upcoming_red_light_pub.publish(Int32(-1))
+                if state == TrafficLight.RED:
+                    print('RED')
+                    self.light_wp = self.stop_line_waypoints[closest_light_red_index]
+                    self.state_red_count = STATE_COUNT_THRESHOLD
+                else:
+                    print('NOT RED')
+                    self.state_red_count -= 1
 
+                if self.state_red_count > 0:
+                    print("traffic_waypoint=" + str(self.light_wp))
+                    self.upcoming_red_light_pub.publish(Int32(self.light_wp))
+                else:
+                    self.upcoming_red_light_pub.publish(Int32(-1))
+
+            rate.sleep()
+
+
+    def image_callback(self, msg):
+        if self.num_waypoints > 0 and self.ego_x is not None:
+            self.camera_image = msg
+            #if (closest_light_red_index >= 0):
+            #    # RED or YELLOW light detected
+            #    self.light_wp = self.stop_line_waypoints[closest_light_red_index]
+            #    self.state_red_count = STATE_COUNT_THRESHOLD
+            #else:
+            #    self.state_red_count -= 1
 
     def get_closest_wp_index(self, x, y, wp1, wp2): 
         closest_dist = 1e10
