@@ -1,5 +1,6 @@
 import rospy
 import math
+from lowpass import LowPassFilter
 
 class SpeedController(object):
     def __init__(self, wheel_radius, vehicle_mass, accel_limit, decel_limit, brake_deadband):
@@ -11,6 +12,8 @@ class SpeedController(object):
 
         self.max_torque = vehicle_mass * accel_limit * wheel_radius
 
+        self.filter = LowPassFilter(alpha=0.33)
+
     def get_throttle_brake(self, proposed_linear_vel, current_linear_vel, time_duration):
         if time_duration > 0:
             accel = (proposed_linear_vel - current_linear_vel) / time_duration
@@ -19,6 +22,8 @@ class SpeedController(object):
             accel = max(accel, self.decel_limit)
 
             torque = self.vehicle_mass * accel * self.wheel_radius
+            torque = self.filter.filt(torque)
+
             throttle = torque / self.max_torque
 
             brake = 0.
