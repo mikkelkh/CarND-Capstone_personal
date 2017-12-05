@@ -120,7 +120,7 @@ def classify_red_tl(image_np, boxes, classes, scores, thickness=4):
                   cv2.putText(image_np, text, (int(left), int(bot)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, lineType=cv2.LINE_AA)
                   return image_np, True
 
-            return image_np, False
+    return image_np, False
             #cv2.imshow("image", image_np)
             #cv2.waitKey(0)
         
