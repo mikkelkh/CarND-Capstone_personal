@@ -71,7 +71,10 @@ class TLDetector(object):
     # -----------------------------------------------------------------------------------
 
     def loop(self):
-        rate = rospy.Rate(4) # every 250 ms: GPU decoding is arround 100 ms on GTX 1080 TI
+        # every 250 ms is OK on GTX 1080 TI: GPU decoding is arround 120 ms on GTX 1080 TI
+        # every 1 sec, so we have some margin on lower end GPUs: eg on GTX 980 TI decoding is around 250 ms
+        # TODO: test on GTX 1050 as well
+        rate = rospy.Rate(1)
         while not rospy.is_shutdown():
             if self.camera_image is not None:
                 cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
