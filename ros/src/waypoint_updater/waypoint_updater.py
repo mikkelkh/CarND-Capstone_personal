@@ -85,6 +85,7 @@ class WaypointUpdater(object):
         self.num_waypoints = len(self.waypoints)
         self.waypoints_backup = copy.deepcopy(self.waypoints)
 
+
     def traffic_cb(self, msg):
         traffic_wp_index = msg.data
         # TODO: Callback for /traffic_waypoint message. Implement
@@ -93,6 +94,7 @@ class WaypointUpdater(object):
         if msg.data > 0 and msg.data != self.traffic_wp_index: 
             closest_wp_index = self.closest_wp_index
             #closest_wp_index = max(closest_wp_index, traffic_wp_index - 75)
+
             if traffic_wp_index > closest_wp_index:
                 distance_to_stop = self.distance(self.waypoints, closest_wp_index, traffic_wp_index)
                 if distance_to_stop > 0:
