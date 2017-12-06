@@ -13,7 +13,6 @@ import yaml
 import math
 
 STATE_COUNT_THRESHOLD = 3
-STATE_COUNT_THRESHOLD = 2
 
 class TLDetector(object):
     def __init__(self):
@@ -73,9 +72,9 @@ class TLDetector(object):
 
     def loop(self):
         # every 250 ms is OK on GTX 1080 TI: GPU decoding is arround 120 ms on GTX 1080 TI
-        # every 500 ms, so we have some margin on lower end GPUs: eg on GTX 980 TI decoding is around 250 ms
-        # TODO: test on GTX 1050 as well
-        rate = rospy.Rate(2)
+        # every 333ms ms, so we have some margin on lower end GPUs: eg on GTX 980 TI decoding is around 250 ms
+        # TESTED with GTX 1080 TI => Sould be OK with GTX TITAN X on Carla Self-Driving Car
+        rate = rospy.Rate(3)
         while not rospy.is_shutdown():
             if self.camera_image is not None:
 
