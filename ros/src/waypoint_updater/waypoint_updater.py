@@ -110,7 +110,7 @@ class WaypointUpdater(object):
                         self.set_waypoint_velocity(self.waypoints, wp+1, vel)
 
         # if end of red light => restore speed to original
-        if msg.data < 0 and msg.data != self.traffic_wp_index:
+        if msg.data < 0 and msg.data != self.traffic_wp_index and self.waypoints_modif_end is not None:
             for wp in range(self.waypoints_modif_start, self.waypoints_modif_end + 1):
                 self.set_waypoint_velocity(self.waypoints, wp, self.get_waypoint_velocity(self.waypoints_backup[wp]))
 
