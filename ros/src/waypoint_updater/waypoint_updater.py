@@ -27,6 +27,7 @@ TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
 LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
+MAX_DECEL = 1
 
 
 class WaypointUpdater(object):
@@ -59,7 +60,6 @@ class WaypointUpdater(object):
 
         self.waypoints_modif_start = None
         self.waypoints_modif_end = None
-        self.waypoints_modif = []
         self.current_velocity = None
 
         self.traffic_wp_index = None
@@ -83,6 +83,8 @@ class WaypointUpdater(object):
         # TODO: Implement
         self.waypoints = msg.waypoints
         self.num_waypoints = len(self.waypoints)
+        self.waypoints_backup = copy.deepcopy(self.waypoints)
+
 
     def traffic_cb(self, msg):
         traffic_wp_index = msg.data
@@ -91,35 +93,28 @@ class WaypointUpdater(object):
         # if first detection of red light => compute slow down path
         if msg.data > 0 and msg.data != self.traffic_wp_index: 
             closest_wp_index = self.closest_wp_index
-            closest_wp_index = max(closest_wp_index, traffic_wp_index - 75)
+            #closest_wp_index = max(closest_wp_index, traffic_wp_index - 75)
+
             if traffic_wp_index > closest_wp_index:
                 distance_to_stop = self.distance(self.waypoints, closest_wp_index, traffic_wp_index)
                 if distance_to_stop > 0:
 
-                    current_velocity = self.get_waypoint_velocity(self.waypoints[closest_wp_index])
-                    decrease_velocity_per_meter = (current_velocity - 0) / distance_to_stop
-
                     self.waypoints_modif_start = closest_wp_index + 1
                     self.waypoints_modif_end = traffic_wp_index
-                    self.waypoints_modif = []
 
-                    decrease_velocity = 0
                     for wp in range(closest_wp_index, traffic_wp_index):
-                        distance_to_next_wp = self.distance(self.waypoints, wp, wp+1)
-                        decrease_velocity += decrease_velocity_per_meter * distance_to_next_wp
-
-                        velocity = self.get_waypoint_velocity(self.waypoints[wp+1])
-                        velocity -= decrease_velocity
-                        velocity = max(0, velocity)
-
-                        self.waypoints_modif.append( self.get_waypoint_velocity(self.waypoints[wp+1]) )
-                        self.set_waypoint_velocity(self.waypoints, wp+1, velocity)
-                        #rospy.logwarn("WP_UPDATER: ========> wp=%d decrease_velocity=%f planned_vel=%f", wp, decrease_velocity, velocity)
+                        dist = self.distance(self.waypoints, wp+1, traffic_wp_index)
+                        vel = math.sqrt(2 * MAX_DECEL * dist) 
+                        current_vel = self.get_waypoint_velocity(self.waypoints[wp+1])
+                        vel = min(vel, current_vel)
+                        if vel < 1.:
+                            vel = 0.
+                        self.set_waypoint_velocity(self.waypoints, wp+1, vel)
 
         # if end of red light => restore speed to original
-        if msg.data < 0 and msg.data != self.traffic_wp_index:
+        if msg.data < 0 and msg.data != self.traffic_wp_index and self.waypoints_modif_end is not None:
             for wp in range(self.waypoints_modif_start, self.waypoints_modif_end + 1):
-                self.set_waypoint_velocity(self.waypoints, wp, self.waypoints_modif[wp - self.waypoints_modif_start])
+                self.set_waypoint_velocity(self.waypoints, wp, self.get_waypoint_velocity(self.waypoints_backup[wp]))
 
         self.traffic_wp_index = traffic_wp_index
 

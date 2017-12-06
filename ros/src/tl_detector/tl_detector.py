@@ -8,7 +8,6 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from light_classification.tl_classifier import TLClassifier
 import tf
-import cv2
 import yaml
 
 import math
@@ -45,7 +44,6 @@ class TLDetector(object):
         self.upcoming_red_light_pub = rospy.Publisher('/traffic_waypoint', Int32, queue_size=1)
 
         self.bridge = CvBridge()
-        self.light_classifier = TLClassifier()
         self.listener = tf.TransformListener()
 
         self.state = TrafficLight.UNKNOWN
@@ -59,12 +57,89 @@ class TLDetector(object):
 
         self.num_waypoints = 0
         self.light_wp = -1
+        self.state_red_count = -1
 
         # TEMPORARY just for testing purposes in simulation without real TL detector
         #sub6 = rospy.Subscriber('/image_color', Image, self.image_cb)
-        sub6 = rospy.Subscriber('/image_color', Image, self.image_simu_cb)
+        sub6 = rospy.Subscriber('/image_color', Image, self.image_callback)
 
-        rospy.spin()
+        self.light_classifier = TLClassifier()
+
+        #rospy.spin()
+        self.loop()
+
+    # -----------------------------------------------------------------------------------
+
+    def loop(self):
+        # every 250 ms is OK on GTX 1080 TI: GPU decoding is arround 120 ms on GTX 1080 TI
+        # every 333ms ms, so we have some margin on lower end GPUs: eg on GTX 980 TI decoding is around 250 ms
+        # TESTED with GTX 1080 TI => Sould be OK with GTX TITAN X on Carla Self-Driving Car
+        rate = rospy.Rate(3)
+        while not rospy.is_shutdown():
+            if self.camera_image is not None:
+
+                # search wp closest to our car
+                if self.closest_wp_index is None:
+                    wp_min = 0
+                    wp_max = self.num_waypoints - 1
+                else:
+                    wp_min = self.closest_wp_index - 200
+                    wp_max = self.closest_wp_index + 200
+
+                self.closest_wp_index = self.get_closest_wp_index(self.ego_x, self.ego_y, wp_min, wp_max)
+
+                closest_light_red_index = -1
+                closest_light_red_dist = 1e10
+                for i in range(len(self.lights)):
+                    light = self.lights[i]
+                    dist = self.stop_line_waypoints[i] - self.closest_wp_index
+                    if dist >= 0 and dist < 150 and dist  < closest_light_red_dist:
+                        closest_light_red_dist = dist
+                        closest_light_red_index = i
+
+                cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+                #Get classification
+                state = self.light_classifier.get_classification(cv_image)
+
+                if state == TrafficLight.RED:
+                    print('RED')
+                    self.light_wp = self.stop_line_waypoints[closest_light_red_index]
+                    self.state_red_count = STATE_COUNT_THRESHOLD
+                else:
+                    print('NOT RED')
+                    self.state_red_count -= 1
+
+                if self.state_red_count > 0:
+                    print("traffic_waypoint=" + str(self.light_wp))
+                    self.upcoming_red_light_pub.publish(Int32(self.light_wp))
+                else:
+                    self.upcoming_red_light_pub.publish(Int32(-1))
+
+            rate.sleep()
+
+
+    def image_callback(self, msg):
+        if self.num_waypoints > 0 and self.ego_x is not None:
+            self.camera_image = msg
+            #if (closest_light_red_index >= 0):
+            #    # RED or YELLOW light detected
+            #    self.light_wp = self.stop_line_waypoints[closest_light_red_index]
+            #    self.state_red_count = STATE_COUNT_THRESHOLD
+            #else:
+            #    self.state_red_count -= 1
+
+    def get_closest_wp_index(self, x, y, wp1, wp2): 
+        closest_dist = 1e10
+        closest_wp_index = -1
+        for i in range(wp1, wp2):
+            wp = self.waypoints[i % self.num_waypoints]
+            wp_x = wp.pose.pose.position.x
+            wp_y = wp.pose.pose.position.y
+            dist = math.sqrt( (x - wp_x)**2 + (y - wp_y)**2)
+            if dist < closest_dist:
+                closest_dist = dist
+                closest_wp_index = i
+        return closest_wp_index
 
     # -----------------------------------------------------------------------------------
 
