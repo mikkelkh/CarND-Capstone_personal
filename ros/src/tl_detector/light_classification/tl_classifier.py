@@ -19,9 +19,14 @@ class TLClassifier(object):
     def __init__(self, profiling=True):
         if not os.path.exists(DEBUG_DIR):
             os.makedirs(DEBUG_DIR)
-        rospy.logwarn("%s", os.getcwd())
+        #rospy.logwarn("%s", os.getcwd())
         self.detector = MODEL_DIR + 'faster_rcnn_inception_v2.pb'
+        rospy.logwarn("----------------------------------------------------------------------------------")
+        rospy.logwarn("With SIMULATOR: use lowest screen resolution 640x480 with Graphics Quality FASTEST")
+        rospy.logwarn("With SIMULATOR: so that the GPU is mainly dedicated to running object detection")
+        rospy.logwarn("----------------------------------------------------------------------------------")
         rospy.logwarn("PLEASE WAIT for TENSORFLOW init ... There will be a READY TO GO message")
+        rospy.logwarn("----------------------------------------------------------------------------------")
         self.sess, _ = self.load_graph(self.detector)
         detection_graph = self.sess.graph
         
@@ -40,7 +45,7 @@ class TLClassifier(object):
 
         # the very first decoding is slow: al inits are done
         # => do that in advance before real decoding
-        for i in range(5):
+        for i in range(2):
             #test_image = cv2.imread('light_classification/img/left0144.jpg')
             test_image = cv2.imread(IMG_DIR + 'left0144.jpg')
             pred_image, is_red = self.detect_tl(test_image)
@@ -51,7 +56,9 @@ class TLClassifier(object):
             #cv2.imwrite("light_classification/img/pred_image.png", pred_image)
             cv2.imwrite(IMG_DIR + 'pred_image.png', pred_image)
 
+        rospy.logwarn("----------------------------------------------------------------------------------")
         rospy.logwarn("TENSORFLOW init done ... READY TO GO")
+        rospy.logwarn("----------------------------------------------------------------------------------")
         self.num_image = 1
 
     def load_graph(self, graph_file, use_xla=False):
