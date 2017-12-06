@@ -15,9 +15,9 @@ The script will require a package (maybe we should avoid this at some point).
 
        pip install --user numpy numpy-quaternion
 
-Change the directory to store files in the file ".../CarND-Capstone/ros/src/tl_detector/tl_detector.py"
+Change the directory to store files in.
 
-       self.dirData = os.path.join("/home/pistol/DataFolder/SelfDriving/TrafficLights")
+       export ROS_TEST_RESULTS_DIR=/home/user/data
 
 Run the simulator and use the following instructions to record data. 
 

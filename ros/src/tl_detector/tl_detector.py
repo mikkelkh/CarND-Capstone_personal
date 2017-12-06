@@ -44,7 +44,7 @@ class TLDetector(object):
         config_string = rospy.get_param("/traffic_light_config")
         
         # Folder of where images are stored. 
-        self.dirData = os.path.join("/home/pistol/DataFolder/SelfDriving/TrafficLights")
+        self.dirData = rospy.core.rospkg.environment.get_test_results_dir()
         self.config = yaml.load(config_string)
 
         self.upcoming_red_light_pub = rospy.Publisher('/traffic_waypoint', Int32, queue_size=1)
@@ -71,7 +71,7 @@ class TLDetector(object):
         self.pose = msg
 
     def waypoints_cb(self, waypoints):
-        print("WAYPOINTS_RECEIVED")
+        rospy.loginfo("WAYPOINTS_RECEIVED")
         self.waypoints = waypoints
         self.waypoints_received = True
         self.update_waypoint = True
@@ -208,30 +208,25 @@ class TLDetector(object):
                 # Get closest traffic light. 
                 tmpLight = self.lights[idx_traffic_light]
                 
-                # Get vehicle pose (position and orientation)
-                poseVehicle = self.pose.pose
-                
                 # Get pose of the waypoint closest to the traffic light. 
                 poseLight = self.waypointlist[idx_waypoint_traffic_light,:]
                 orientationLight = poseLight[2:]
                 positionLight = poseLight[:2]
                 
                 # Difference between vehicle position and traffic light position. 
-                diff_position = positionLight-np.array([ poseVehicle.position.x,poseVehicle.position.y])
-                
+                diff_position = positionLight-np.array(vehicle_pose)
                 
                 # Difference in orientation (calculated in quaternions)
                 o1 = orientationLight
-                o2 = poseVehicle.orientation
+                o2 = self.pose.pose.orientation
                 # Angle difference between light-orientation and vehicle-orientation
                 q3 = np.quaternion(o1[0],o1[1],o1[2],o1[3]) * np.quaternion(o2.x,o2.y,o2.z,o2.w).inverse()
-                diff_angle = euler_from_quaternion(quaternion.as_float_array(q3))
-                diff_angle = diff_angle[2]
+                diff_angle = euler_from_quaternion(quaternion.as_float_array(q3))[2]
                 
                 # Distance between ligt and vehicle
                 diff_dist = np.sqrt(np.sum(np.power(diff_position,2)))
                 
-                print("     dist:", diff_dist ,"diff_position:", diff_position, "angle: ", diff_angle)
+                rospy.loginfo("dist: %s, diff_position: %s, angle: %s", diff_dist, diff_position, diff_angle)
                 
                 
                 in_view_dist = 140.0
@@ -257,14 +252,14 @@ class TLDetector(object):
                     if (diff_dist < in_view_dist ) and (np.abs(diff_angle)<in_view_angle):          
                         saveImage = True
                         strState = str(tmpLight.state)
-                        print("TrafficLight in view: ")
+                        rospy.loginfo("TrafficLight in view: ")
                     
                     # Defining when a traffic light is out of view
                     if (diff_dist > (in_view_dist+100) ) or (np.abs(diff_angle)>(in_view_angle+0.05)):
                         saveImage = True
                         save_factor = 10
                         strState = str(4)
-                        print("TrafficLight definitly out off view: ")
+                        rospy.loginfo("TrafficLight definitly out off view: ")
                         
                     # Stores images to folder defined in (self.dirData)
                     if saveImage and (np.mod(self.image_count,save_factor)==0):
@@ -272,7 +267,7 @@ class TLDetector(object):
                         tmpName = str(self.image_count).zfill(4)
                         dirOut = os.path.join(self.dirData,tmpName+"_"+strState+"_"+ str(int(diff_dist)) + '.jpg')
                         cv2.imwrite(dirOut,self.camera_image)
-                        print("SaveImage")
+                        rospy.loginfo("SaveImage")
                     
         if light:
             state = self.get_light_state(light)
