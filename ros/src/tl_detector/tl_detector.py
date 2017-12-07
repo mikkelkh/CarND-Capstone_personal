@@ -17,6 +17,8 @@ from scipy import spatial
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 import quaternion
 
+import math
+
 STATE_COUNT_THRESHOLD = 3
 
 class TLDetector(object):
@@ -39,7 +41,6 @@ class TLDetector(object):
         rely on the position of the light and the camera image to predict it.
         '''
         sub3 = rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self.traffic_cb)
-        sub6 = rospy.Subscriber('/image_color', Image, self.image_cb)
 
         config_string = rospy.get_param("/traffic_light_config")
         
@@ -47,10 +48,12 @@ class TLDetector(object):
         self.dirData = rospy.core.rospkg.environment.get_test_results_dir()
         self.config = yaml.load(config_string)
 
+        self.stop_line_positions = self.config['stop_line_positions']
+        self.stop_line_waypoints = []
+
         self.upcoming_red_light_pub = rospy.Publisher('/traffic_waypoint', Int32, queue_size=1)
 
         self.bridge = CvBridge()
-        self.light_classifier = TLClassifier()
         self.listener = tf.TransformListener()
         self.idx = 0
         self.waypointlist = np.array([])
@@ -58,26 +61,185 @@ class TLDetector(object):
         self.last_state = TrafficLight.UNKNOWN
         self.last_wp = -1
         self.state_count = 0
+
+        self.ego_x = None
+        self.ego_y = None
+        self.closest_wp_index = None
+
+        self.num_waypoints = 0
+        self.light_wp = -1
+        self.state_red_count = -1
+
+        # Peter and Mikkel
         self.tree = []
         self.image_count = 0
         self.waypoints_prepared = False
-        self.waypoints_received = False
         self.idx_traffic_light_found = False
         self.update_waypoint = False
-        
+
+        sub6 = rospy.Subscriber('/image_color', Image, self.image_cb)
         rospy.spin()
+
+        # Philippe
+#        sub6 = rospy.Subscriber('/image_color', Image, self.image_callback)
+#        self.light_classifier = TLClassifier()
+#        self.loop()
+
+    # -----------------------------------------------------------------------------------
+
+    def loop(self):
+        # every 250 ms is OK on GTX 1080 TI: GPU decoding is arround 120 ms on GTX 1080 TI
+        # every 333ms ms, so we have some margin on lower end GPUs: eg on GTX 980 TI decoding is around 250 ms
+        # TESTED with GTX 1080 TI => Sould be OK with GTX TITAN X on Carla Self-Driving Car
+        rate = rospy.Rate(3)
+        while not rospy.is_shutdown():
+            if self.camera_image is not None:
+
+                # search wp closest to our car
+                if self.closest_wp_index is None:
+                    wp_min = 0
+                    wp_max = self.num_waypoints - 1
+                else:
+                    wp_min = self.closest_wp_index - 200
+                    wp_max = self.closest_wp_index + 200
+
+                self.closest_wp_index = self.get_closest_wp_index(self.ego_x, self.ego_y, wp_min, wp_max)
+
+                closest_light_red_index = -1
+                closest_light_red_dist = 1e10
+                for i in range(len(self.lights)):
+                    light = self.lights[i]
+                    dist = self.stop_line_waypoints[i] - self.closest_wp_index
+                    if dist >= 0 and dist < 150 and dist  < closest_light_red_dist:
+                        closest_light_red_dist = dist
+                        closest_light_red_index = i
+
+                cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+                #Get classification
+                state = self.light_classifier.get_classification(cv_image)
+
+                if state == TrafficLight.RED:
+                    print('RED')
+                    self.light_wp = self.stop_line_waypoints[closest_light_red_index]
+                    self.state_red_count = STATE_COUNT_THRESHOLD
+                else:
+                    print('NOT RED')
+                    self.state_red_count -= 1
+
+                if self.state_red_count > 0:
+                    print("traffic_waypoint=" + str(self.light_wp))
+                    self.upcoming_red_light_pub.publish(Int32(self.light_wp))
+                else:
+                    self.upcoming_red_light_pub.publish(Int32(-1))
+
+            rate.sleep()
+
+
+    def image_callback(self, msg):
+        if self.num_waypoints > 0 and self.ego_x is not None:
+            self.camera_image = msg
+            #if (closest_light_red_index >= 0):
+            #    # RED or YELLOW light detected
+            #    self.light_wp = self.stop_line_waypoints[closest_light_red_index]
+            #    self.state_red_count = STATE_COUNT_THRESHOLD
+            #else:
+            #    self.state_red_count -= 1
+
+    def get_closest_wp_index(self, x, y, wp1, wp2): 
+        closest_dist = 1e10
+        closest_wp_index = -1
+        for i in range(wp1, wp2):
+            wp = self.waypoints[i % self.num_waypoints]
+            wp_x = wp.pose.pose.position.x
+            wp_y = wp.pose.pose.position.y
+            dist = math.sqrt( (x - wp_x)**2 + (y - wp_y)**2)
+            if dist < closest_dist:
+                closest_dist = dist
+                closest_wp_index = i
+        return closest_wp_index
+
+    # -----------------------------------------------------------------------------------
+
+    def image_simu_cb(self, msg):
+        if self.num_waypoints > 0 and self.ego_x is not None:
+
+            # search wp closest to our car
+            if self.closest_wp_index is None:
+                wp_min = 0
+                wp_max = self.num_waypoints - 1
+            else:
+                wp_min = self.closest_wp_index - 200
+                wp_max = self.closest_wp_index + 200
+            self.closest_wp_index = self.get_closest_wp_index(self.ego_x, self.ego_y, wp_min, wp_max)
+
+            # simulate traffic light RED detection
+            closest_light_red_index = -1
+            closest_light_red_dist = 1e10
+            for i in range(len(self.lights)):
+                light = self.lights[i]
+                #if light.state == TrafficLight.RED or light.state == TrafficLight.YELLOW:
+                if light.state == TrafficLight.RED:
+                    dist = self.stop_line_waypoints[i] - self.closest_wp_index
+                    # something realistic in our Field Of View
+                    if dist >= 0 and dist < 150 and dist  < closest_light_red_dist:
+                        closest_light_red_dist = dist
+                        closest_light_red_index = i
+
+            if (closest_light_red_index >= 0):
+                # RED or YELLOW light detected
+                self.light_wp = self.stop_line_waypoints[closest_light_red_index]
+                self.state_red_count = STATE_COUNT_THRESHOLD
+            else:
+                self.state_red_count -= 1
+
+            if self.state_red_count > 0:
+                print("traffic_waypoint=" + str(self.light_wp))
+                self.upcoming_red_light_pub.publish(Int32(self.light_wp))
+            else:
+                self.upcoming_red_light_pub.publish(Int32(-1))
+
+
+    def get_closest_wp_index(self, x, y, wp1, wp2): 
+        closest_dist = 1e10
+        closest_wp_index = -1
+        for i in range(wp1, wp2):
+            wp = self.waypoints[i % self.num_waypoints]
+            wp_x = wp.pose.pose.position.x
+            wp_y = wp.pose.pose.position.y
+            dist = math.sqrt( (x - wp_x)**2 + (y - wp_y)**2)
+            if dist < closest_dist:
+                closest_dist = dist
+                closest_wp_index = i
+        return closest_wp_index
+
 
     def pose_cb(self, msg):
         self.pose = msg
+        # Philippe
+        self.ego_x = msg.pose.position.x
+        self.ego_y = msg.pose.position.y
 
-    def waypoints_cb(self, waypoints):
+    # this callback is called just once at start
+    def waypoints_cb(self, msg):
+        # Peter and Mikkel
         rospy.loginfo("WAYPOINTS_RECEIVED")
-        self.waypoints = waypoints
-        self.waypoints_received = True
         self.update_waypoint = True
+    
+        # Philippe
+        if self.num_waypoints == 0:
+            self.waypoints = msg.waypoints
+            self.num_waypoints = len(self.waypoints)
+            for i in range(len(self.stop_line_positions)):
+                x = self.stop_line_positions[i][0]
+                y = self.stop_line_positions[i][1]
+                stop_line_waypoint = self.get_closest_wp_index(x, y, 0, self.num_waypoints)
+                self.stop_line_waypoints.append(stop_line_waypoint)
+                print(stop_line_waypoint)
 
     def traffic_cb(self, msg):
         self.lights = msg.lights
+
+    # -----------------------------------------------------------------------------------
 
     def image_cb(self, msg):
         """Identifies red lights in the incoming camera image and publishes the index
@@ -110,6 +272,7 @@ class TLDetector(object):
             self.upcoming_red_light_pub.publish(Int32(self.last_wp))
         self.state_count += 1
 
+
     def get_closest_waypoint(self, pose):
         """Identifies the closest path waypoint to the given position
             https://en.wikipedia.org/wiki/Closest_pair_of_points_problem
@@ -130,7 +293,7 @@ class TLDetector(object):
                                            waypoint.pose.pose.orientation.x,
                                            waypoint.pose.pose.orientation.y,
                                            waypoint.pose.pose.orientation.z,
-                                           waypoint.pose.pose.orientation.w] for waypoint in self.waypoints.waypoints])
+                                           waypoint.pose.pose.orientation.w] for waypoint in self.waypoints])
             
             # Determining the KDTree to faster measure distance to closest point
             if useKDTree:
@@ -187,7 +350,7 @@ class TLDetector(object):
         
         
         # This is only processed if waypoints have been received. 
-        if self.waypoints_received:
+        if self.num_waypoints > 0:
             
             # List of positions that correspond to the line to stop in front of for a given intersection
             stop_line_positions = np.array(self.config['stop_line_positions'])
