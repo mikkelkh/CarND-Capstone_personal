@@ -129,7 +129,7 @@ class WaypointUpdater(object):
                 if self.closest_wp_index is None:
                     wp_min = 0
                     wp_max = self.num_waypoints - 1
-                else:
+                elif self.num_waypoints > 2 * LOOKAHEAD_WPS: # BUG FIX XXX
                     wp_min = self.closest_wp_index - LOOKAHEAD_WPS
                     wp_max = self.closest_wp_index + LOOKAHEAD_WPS
 
