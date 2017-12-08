@@ -53,10 +53,14 @@ class DBWNode(object):
         steer_ratio = rospy.get_param('~steer_ratio', 14.8)
         max_lat_accel = rospy.get_param('~max_lat_accel', 3.)
         max_steer_angle = rospy.get_param('~max_steer_angle', 8.)
+        carla_low_speed_test = rospy.get_param('~carla_low_speed_test', 0.)
         min_speed = 0 # obviously ... or not ?
 
+        self.steer_ratio = steer_ratio # DBW_TEST
+        self.carla_low_speed_test = carla_low_speed_test # DBW_TEST
+
         self.yaw_controller = YawController(wheel_base, steer_ratio, min_speed, max_lat_accel, max_steer_angle)
-        self.speed_controller = SpeedController(wheel_radius, vehicle_mass, accel_limit, decel_limit, brake_deadband)
+        self.speed_controller = SpeedController(wheel_radius, vehicle_mass, fuel_capacity, accel_limit, decel_limit, brake_deadband, carla_low_speed_test)
 
         self.steer_pub = rospy.Publisher('/vehicle/steering_cmd',
                                          SteeringCmd, queue_size=1)
@@ -130,6 +134,7 @@ class DBWNode(object):
 
     def dbw_enabled_callback(self, msg):
         self.dbw_enabled = msg.data
+        rospy.logwarn("dbw_enabled=%d", self.dbw_enabled)
 
     def loop(self):
         rate = rospy.Rate(DBW_FREQUENCY) # 50Hz
@@ -145,7 +150,10 @@ class DBWNode(object):
             #   self.publish(throttle, brake, steer)
             if self.dbw_enabled:
                 if self.proposed_angular_vel is not None and self.current_linear_vel is not None:
-                    steer = self.yaw_controller.get_steering(self.proposed_linear_vel, self.proposed_angular_vel, self.current_linear_vel)
+                    if self.carla_low_speed_test:
+                        steer = self.proposed_angular_vel * self.steer_ratio # DBW_TEST
+                    else:
+                        steer = self.yaw_controller.get_steering(self.proposed_linear_vel, self.proposed_angular_vel, self.current_linear_vel)
                     throttle, brake = self.speed_controller.get_throttle_brake(self.proposed_linear_vel, self.current_linear_vel, 1.0/DBW_FREQUENCY)
                 else:
                     throttle, brake, steer = 0., 0., 0.
