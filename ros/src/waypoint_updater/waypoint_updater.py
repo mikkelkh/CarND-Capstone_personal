@@ -23,7 +23,7 @@ Please note that our simulator also provides the exact location of traffic light
 current status in `/vehicle/traffic_lights` message. You can use this message to build this node
 as well as to verify your TL classifier.
 
-TODO (for Yousuf and Aaron): Stopline location for each traffic light.
+TODO: Stopline location for each traffic light.
 '''
 
 LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
@@ -32,17 +32,17 @@ MAX_DECEL = 1
 
 class WaypointUpdater(object):
     def __init__(self):
+        # Initialize the node with the master process
         rospy.init_node('waypoint_updater')
 
+        # Subscribers
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
-
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
         rospy.Subscriber('/traffic_waypoint', Int32, self.traffic_cb)
         rospy.Subscriber("/current_velocity", TwistStamped, self.current_velocity_cb, queue_size=1)
 
-
-
+        # Publishers
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
 
         # TODO: Add other member variables you need below
@@ -77,7 +77,8 @@ class WaypointUpdater(object):
 
     def current_velocity_cb(self, msg):
         # in [x, y] ego coord
-        self.current_velocity = msg.twist.linear.x
+        lin_vel = [msg.twist.linear.x, msg.twist.linear.y]
+        self.current_velocity = math.sqrt(lin_vel[0]**2 + lin_vel[1]**2)
 
     def waypoints_cb(self, msg):
         # TODO: Implement
@@ -85,12 +86,11 @@ class WaypointUpdater(object):
         self.num_waypoints = len(self.waypoints)
         self.waypoints_backup = copy.deepcopy(self.waypoints)
 
-
     def traffic_cb(self, msg):
         traffic_wp_index = msg.data
         # TODO: Callback for /traffic_waypoint message. Implement
 
-        # if first detection of red light => compute slow down path
+        # If first detection of red light => compute slow down path
         if msg.data > 0 and msg.data != self.traffic_wp_index: 
             closest_wp_index = self.closest_wp_index
             #closest_wp_index = max(closest_wp_index, traffic_wp_index - 75)
