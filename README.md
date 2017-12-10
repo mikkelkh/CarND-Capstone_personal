@@ -57,6 +57,10 @@ https://medium.com/udacity/how-the-udacity-self-driving-car-works-575365270a40
      <br>red-traffic-light.png
 </p>
 
+### Waypoint Loader Node
+
+- From Autoware
+
 ### Waypoint Updater Node
 
 <p align="center">
@@ -75,8 +79,49 @@ https://medium.com/udacity/how-the-udacity-self-driving-car-works-575365270a40
      <br>dbw.png
 </p>
 
+### Rosbag Tests Howto
 
+Some notes on testing and checking results with a rosbag file:  
+  
+1) Download https://drive.google.com/open?id=0B2_h37bMVw3iT0ZEdlF4N01QbHc4  
+   you get a file: udacity_succesful_light_detection.bag  
+2) Rename the file to dbw_test.rosbag.bag  
+3) Move the dbw_test.rosbag.bag file to the project root’s data folder, e.g. CarND-Capstone/data/dbw_test.rosbag.bag  
+4) Run dbw_test: roslaunch src/twist_controller/launch/dbw_test.launch  
+5) Launch rviz in another terminal just to visualize camera and lidar sensors   
+When test is done:  
+6) Compare your results to the dbw_test output logged in ros/src/twist_controller in three files: brakes.csv, steers.csv, throttles.csv  
 
+  
+Carla vs simulation specificities:
+We are at very low speed: < 20 km/h  
+1) Throttle is at max 0.025 (instead of 1 potentially at regular speeds)  
+2) Brake is not in Nm (mass * accel * wheel_radius) but in (accel * wheel_radius) apparently ...   
+   Use a percentage mode: percentage vs mass  
+   cf: https://github.com/udacity/sdc-issue-reports/issues/1204  
+3) Steer is (or can be just computed as) proposed_angular_velocity (as sent by pure pursuit) * steer_ratio ... that is all ...
+   It results in more agressive steering which is OK and even usefull at such low speed  
+With these modifications we have a very good match match while running dbw_test.py on dbw_test.rosbag.bag  
+  
+TL test howto:  
+1) roslaunch launch/site.launch  
+2) rosbag play udacity_succesful_light_detection.bag  
+3) check all images in: ros/src/tl_detector/light_classification/debug/imageXXX.png  
+  
+GPU WARNING:   
+- Carla is using a powerfull GPU Titan X
+- Code was tested with a GTX 1080 TI, GTX 980 TI and a GTX 1050
+- Faster_rcnn is used for TL detection every 333 ms: so the GPU should run faster_rcnn on an image in less than 333 ms 
+  (minus time for other nodes processing and minus time for simulator graphics if you are using it ...)
+
+### Conclusion and Next Steps
+
+- Almost no brake command outside deceleration phases
+- MPC support
+- Profiling
+- Traffic Light Detection optimization
+
+### References
 
 ### Native Installation
 
