@@ -43,7 +43,7 @@ https://medium.com/udacity/how-the-udacity-self-driving-car-works-575365270a40
 
 ### Traffic Light Detection Node
 <p align="center">
-     <img src="./imgs/tl-detector.png" alt="pipeline" width="100%" height="100%">
+     <img src="./imgs/tl-detector.png" alt="pipeline" width="75%" height="75%">
      <br>tl-detector.png
 </p>
 
@@ -64,7 +64,7 @@ https://medium.com/udacity/how-the-udacity-self-driving-car-works-575365270a40
 ### Waypoint Updater Node
 
 <p align="center">
-     <img src="./imgs/waypoint-updater.png" alt="pipeline" width="100%" height="100%">
+     <img src="./imgs/waypoint-updater.png" alt="pipeline" width="75%" height="75%">
      <br>waypoint-updater.png
 </p>
 
@@ -75,7 +75,7 @@ https://medium.com/udacity/how-the-udacity-self-driving-car-works-575365270a40
 ### Drive By Wire Node
 
 <p align="center">
-     <img src="./imgs/dbw.png" alt="pipeline" width="100%" height="100%">
+     <img src="./imgs/dbw.png" alt="pipeline" width="75%" height="75%">
      <br>dbw.png
 </p>
 
