@@ -9,53 +9,69 @@ This is the project repo for the final project of the Udacity Self-Driving Car N
 * [Sebastian Stümper](https://github.com/sstuemper) - sebastian.stuemper@gmail.com
 
 <p align="center">
-     <img src="./imgs/rosbag-play.gif" alt="pipeline" width="50%" height="50%">
+     <img src="./imgs/rosbag-play.gif" alt="pipeline" width="100%" height="100%">
      <br>rosbag-play.gif
 </p>
 
 ### Carla Self-Driving Car
+
+Vehicle: 2016 Lincoln MKZ.  
+Sensors: 2 Velodyne VLP-16 LiDARs, 1 Delphi radar, 3 FLIR (Point Grey) Blackfly cameras, Xsens IMU.   
 
 <p align="center">
      <img src="./imgs/Carla.jpg" alt="pipeline" width="50%" height="50%">
      <br>Carla.jpg
 </p>
 
+Udacity Self-Driving Car Harware Specs
+- 31.4 GiB Memory
+- Intel Core i7-6700K CPU @ 4 GHz x 8
+- GPU TITAN X
+- 64-bit OS Ubuntu 16.04 with ROS Kinetic
+
+
 <p align="center">
      <img src="./imgs/Carla2.jpg" alt="pipeline" width="50%" height="50%">
      <br>Carla2.jpg
 </p>
 
+https://medium.com/udacity/how-the-udacity-self-driving-car-works-575365270a40
+
 ### Architecture Diagram
 
 ![image](imgs/final-project-ros-graph-v2.png)
 
-### Traffic Light Detector Node
+### Traffic Light Detection Node
 <p align="center">
-     <img src="./imgs/tl-detector.png" alt="pipeline" width="50%" height="50%">
+     <img src="./imgs/tl-detector.png" alt="pipeline" width="100%" height="100%">
      <br>tl-detector.png
 </p>
 
 <p align="center">
      <img src="./imgs/image72.png" alt="pipeline" width="40%" height="40%">
-     <br>image72.png
+     <br>green-traffic-light.png
 </p>
 
 <p align="center">
      <img src="./imgs/image71.png" alt="pipeline" width="40%" height="40%">
-     <br>image71.png
+     <br>red-traffic-light.png
 </p>
 
-### Waypoint Updater
+### Waypoint Updater Node
 
 <p align="center">
-     <img src="./imgs/waypoint-updater.png" alt="pipeline" width="50%" height="50%">
+     <img src="./imgs/waypoint-updater.png" alt="pipeline" width="100%" height="100%">
      <br>waypoint-updater.png
 </p>
+
+### Waypoint Follower Node
+
+- Pure Pursuit from Autoware
 
 ### Drive By Wire Node
 
 <p align="center">
-     <img src="./imgs/dbw.png" alt="pipeline" width="50%" height="50%">
+     <img src="./imgs/dbw.png" alt="pipeline" width="100%" height="100%">
      <br>dbw.png
 </p>
 
