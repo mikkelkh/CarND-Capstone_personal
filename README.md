@@ -8,10 +8,59 @@ This is the project repo for the final project of the Udacity Self-Driving Car N
 * [Oleg Potkin](https://github.com/olpotkin) - olpotkin@gmail.com
 * [Sebastian Stümper](https://github.com/sstuemper) - sebastian.stuemper@gmail.com
 
+<p align="center">
+     <img src="./imgs/rosbag-play.gif" alt="pipeline" width="50%" height="50%">
+     <br>rosbag-play.gif
+</p>
+
+### Carla Self-Driving Car
+
+<p align="center">
+     <img src="./imgs/Carla.jpg" alt="pipeline" width="50%" height="50%">
+     <br>Carla.jpg
+</p>
+
+<p align="center">
+     <img src="./imgs/Carla2.jpg" alt="pipeline" width="50%" height="50%">
+     <br>Carla2.jpg
+</p>
+
 ### Architecture Diagram
 
-
 ![image](imgs/final-project-ros-graph-v2.png)
+
+### Traffic Light Detector Node
+<p align="center">
+     <img src="./imgs/tl-detector.png" alt="pipeline" width="50%" height="50%">
+     <br>tl-detector.png
+</p>
+
+<p align="center">
+     <img src="./imgs/image72.png" alt="pipeline" width="40%" height="40%">
+     <br>image72.png
+</p>
+
+<p align="center">
+     <img src="./imgs/image71.png" alt="pipeline" width="40%" height="40%">
+     <br>image71.png
+</p>
+
+### Waypoint Updater
+
+<p align="center">
+     <img src="./imgs/waypoint-updater.png" alt="pipeline" width="50%" height="50%">
+     <br>waypoint-updater.png
+</p>
+
+### Drive By Wire Node
+
+<p align="center">
+     <img src="./imgs/dbw.png" alt="pipeline" width="50%" height="50%">
+     <br>dbw.png
+</p>
+
+
+
 
 ### Native Installation
 
