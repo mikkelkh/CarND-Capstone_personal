@@ -183,6 +183,23 @@ for wp in range(closest_wp_index, traffic_wp_index):
 ### Waypoint Follower Node
 
 - Pure Pursuit from Autoware
+  
+For more details cf https://www.ri.cmu.edu/pub_files/pub3/coulter_r_craig_1992_1/coulter_r_craig_1992_1.pdf 
+
+
+**Parameters:**
+- /linear_interpolate_mode:  
+
+**Subscribers:**
+- /final_waypoints: 
+- /current_pose:
+- /current_velocity:
+
+
+**Publisher:**
+- /twist_cmd: target linear and angular velocity
+
+
 
 ### Drive By Wire Node
 
