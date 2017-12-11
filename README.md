@@ -42,6 +42,26 @@ https://medium.com/udacity/how-the-udacity-self-driving-car-works-575365270a40
 ![image](imgs/final-project-ros-graph-v2.png)
 
 ### Traffic Light Detection Node
+
+**Parameters:**
+- /traffic_light_config: map related information with stop line positions. 
+
+**Subscribers:**
+- /current_pose: ego (x, y) position. Populated by Autoware locatization module (GPS+LIDAR based).
+- /base_waypoints: path planned as a discrete set of (x, y) positions
+- /traffic_lights: map related information with traffic lights line positions. 
+- /image_color: raw camera sensor information
+
+**Publisher:**
+- /traffic_waypoint: waypoint where we want to stop (at RED Traffic Light)
+
+**Loop: 3 HZ**
+- every 333 ms: 
+     - Search the closest waypoint (base_waypoint closest to current_pose)
+     - Search the closest known traffic light (based on map /traffic_lights information)
+     - Last received /image_color is analyzed for RED/NOT RED detection/classification.
+     - If RED is detected: publish the /traffic_waypoint i.e. waypoint where we want to stop
+
 <p align="center">
      <img src="./imgs/tl-detector.png" alt="pipeline" width="75%" height="75%">
      <br>tl-detector.png
