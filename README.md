@@ -47,14 +47,10 @@ https://medium.com/udacity/how-the-udacity-self-driving-car-works-575365270a40
      <br>tl-detector.png
 </p>
 
-<p align="center">
-     <img src="./imgs/image72.png" alt="pipeline" width="40%" height="40%">
-     <br>green-traffic-light.png
-</p>
 
-<p align="center">
-     <img src="./imgs/image71.png" alt="pipeline" width="40%" height="40%">
-     <br>red-traffic-light.png
+<p float="left">
+  <img src="/imgs/image72.png" width="45%" /> 
+  <img src="/imgs/image71.png" width="45%" />
 </p>
 
 ### Waypoint Loader Node
