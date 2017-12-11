@@ -142,6 +142,39 @@ Below 2 examples are shown:
 
 ### Waypoint Updater Node
 
+
+**Subscribers:**
+- /current_pose: ego (x, y) position. Populated by Autoware locatization module (GPS+LIDAR based).
+- /base_waypoints: path planned as a discrete set of (x, y) positions
+- /traffic_waypoint: -1 or a number > 0 corresponding to a waypoint where we should stop (RED light match)
+- /current_velocity: linear and angular veocity. Here we use only the linear velocity.
+
+The key callback of this node is **traffic_cb** called at every /traffic_waypoint update.  
+- If 1st detection of a RED Traffic Light: compute a deceleration path ( in SQRT; Not a linear decrease: the faster the decrease the closer to the stop position )
+```python
+for wp in range(closest_wp_index, traffic_wp_index):
+     dist = self.distance(self.waypoints, wp+1, traffic_wp_index)
+     vel = math.sqrt(2 * MAX_DECEL * dist) 
+     current_vel = self.get_waypoint_velocity(self.waypoints[wp+1])
+     vel = min(vel, current_vel)
+     if vel < 1.:
+          vel = 0.
+     self.set_waypoint_velocity(self.waypoints, wp+1, vel)
+```
+- If end of red light: we restore the original planned path and its associated velocities.
+
+
+**Publisher:**
+- /final_waypoints: a set of waypoints and their associated velocity (based on object/traffic light detection information) that we should follow
+
+**Loop: 10 HZ**
+- every 100 ms: 
+     - Find the closest waypoints (with base_waypoint)
+     - Extract LOOKAHEAD_WPS waypoints (typically 200 points). Per waypoint velocity has been already updated by /traffic_waypoint callback
+     - Publish /final_waypoints
+ 
+
+
 <p align="center">
      <img src="./imgs/waypoint-updater.png" alt="pipeline" width="75%" height="75%">
      <br>waypoint-updater.png
