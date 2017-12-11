@@ -184,7 +184,9 @@ for wp in range(closest_wp_index, traffic_wp_index):
 
 - Pure Pursuit from Autoware
   
-For more details cf https://www.ri.cmu.edu/pub_files/pub3/coulter_r_craig_1992_1/coulter_r_craig_1992_1.pdf 
+For more details cf:   
+https://www.ri.cmu.edu/pub_files/pub3/coulter_r_craig_1992_1/coulter_r_craig_1992_1.pdf  
+https://www.ri.cmu.edu/pub_files/2009/2/Automatic_Steering_Methods_for_Autonomous_Automobile_Path_Tracking.pdf  
 
 
 **Parameters:**
