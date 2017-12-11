@@ -123,6 +123,23 @@ Below 2 examples are shown:
 
 - From Autoware
 
+```xml
+<?xml version="1.0"?>
+<launch>
+    <node pkg="waypoint_loader" type="waypoint_loader.py" name="waypoint_loader">
+        <param name="path" value="$(find styx)../../../data/wp_yaw_const.csv" />
+        <param name="velocity" value="40" />
+    </node>
+</launch>
+```
+
+**Parameters:**
+- load a csv file corresponding to a path to follow + a configurable maximum velocity
+
+**Publisher:**
+- /base_waypoints: set of waypoints and associated target velocity corresonding to a planned path (note that we stop at the end of the planned path)
+
+
 ### Waypoint Updater Node
 
 <p align="center">
