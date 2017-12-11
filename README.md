@@ -203,6 +203,43 @@ For more details cf https://www.ri.cmu.edu/pub_files/pub3/coulter_r_craig_1992_1
 
 ### Drive By Wire Node
 
+
+**Parameters:**
+- vehicle_mass:
+- fuel_capacity
+- brake_deadband
+- decel_limit
+- accel_limit
+- wheel_radius
+- steer_ratio
+- max_lat_accel
+- max_steer_angle
+
+**Subscribers:**
+- /twist_command: target linear and angular velocity sent by waypoint_follower
+
+
+**Publisher:**
+- /vehicle/steering_cmd: 
+- /vehicle/throtlle_cmd: 
+- /vehicle/brake_cmd: 
+
+**Loop: 50 HZ**
+- every 20 ms: 
+     - Compute steering command:
+          - steering_angle = angular_velocity * steer_ratio as a first approximation for low speeds
+          - steering_angle = atan(L/R) with L=wheel base and R=radius of curvature=delta_distance/delta_headingAngle
+     - Compute acceleration: (target_velocity - current_velocity) / duration
+     - Compute torque: in Nm, vehicle_mass * acceleration * wheel_radius
+     - Compute throttle command: a value between [0; 1] the ratio of max possible torque (corresponding to max acceleration)
+     - Compute brake command: if throttle < -(brake_deadband) => use abs(torque)
+     - A 1st order Low Pass Filtering (alpha=0.33) is applied to the above commands to ensure smooth commands.
+ 
+ A PID controller could be used; but was not.  
+ The problem would be in tuning Kp, Ki, Kd especially without direct access to the real car ...  
+ An MPC controller would be a better, more generic and self tunable solution. Cf next possible steps.
+
+
 <p align="center">
      <img src="./imgs/dbw.png" alt="pipeline" width="75%" height="75%">
      <br>dbw.png
