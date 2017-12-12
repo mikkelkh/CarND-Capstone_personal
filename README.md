@@ -230,7 +230,7 @@ https://www.ri.cmu.edu/pub_files/2009/2/Automatic_Steering_Methods_for_Autonomou
 - every 20 ms: 
      - Compute steering command:
           - steering_angle = angular_velocity * steer_ratio as a first approximation for low speeds
-          - steering_angle = atan(L/R) with L=wheel base and R=radius of curvature=delta_distance/delta_headingAngle
+          - steering_angle = atan(L/R) with L=wheel_base and R=radius_of_curvature=linear_velocity/angular_velocity
      - Compute acceleration: (target_velocity - current_velocity) / duration
      - Compute torque: in Nm, vehicle_mass * acceleration * wheel_radius
      - Compute throttle command: a value between [0; 1] the ratio of max possible torque (corresponding to max acceleration)
