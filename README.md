@@ -208,14 +208,15 @@ https://www.ri.cmu.edu/pub_files/2009/2/Automatic_Steering_Methods_for_Autonomou
 
 **Parameters:**
 - vehicle_mass:
-- fuel_capacity
-- brake_deadband
-- decel_limit
-- accel_limit
-- wheel_radius
-- steer_ratio
-- max_lat_accel
-- max_steer_angle
+- fuel_capacity:
+- brake_deadband:
+- decel_limit:
+- accel_limit:
+- wheel_radius:
+- wheel_base:
+- steer_ratio:
+- max_lat_accel:
+- max_steer_angle:
 
 **Subscribers:**
 - /twist_command: target linear and angular velocity sent by waypoint_follower
