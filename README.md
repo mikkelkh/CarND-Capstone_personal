@@ -254,7 +254,7 @@ https://www.ri.cmu.edu/pub_files/2009/2/Automatic_Steering_Methods_for_Autonomou
  
  A PID controller could be used; but was not.  
  The problem would be in tuning Kp, Ki, Kd especially without direct access to the real car ...  
- An MPC controller would be a better, more generic and self tunable solution. Cf next possible steps.
+ A MPC controller would be a better, more generic and self tunable solution. Cf next possible steps.
 
 
 <p align="center">
@@ -300,9 +300,9 @@ GPU WARNING:
 ### Conclusion and Next Steps
 
 - Almost no brake command outside deceleration phases
-- MPC support
-- Profiling
-- Traffic Light Detection optimization
+- MPC controller
+- ROS nodes Profiling
+- Traffic Light Detection optimization: reduce inference time (e.g. downsize image)
 
 ### References
 
