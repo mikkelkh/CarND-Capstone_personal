@@ -135,7 +135,7 @@ class TLDetector(object):
                 #Get classification
                 state = self.light_classifier.get_classification(cv_image)
 
-                if state == TrafficLight.RED:
+                if state == TrafficLight.RED and closest_light_red_index is not -1:
                     print('RED')
                     self.light_wp = self.stop_line_waypoints[closest_light_red_index]
                     self.state_red_count = STATE_COUNT_THRESHOLD
@@ -485,8 +485,9 @@ class TLDetector(object):
                 if dist >= 0 and dist < 200 and dist  < closest_light_dist:
                     closest_light_dist = dist
                     closest_light_index = i
-                    
-            light = self.lights[closest_light_index]
+         
+            if closest_light_index is not -1:
+                light = self.lights[closest_light_index]
 
             if SAVE_IMAGE and self.has_image:       
                 strState = str(light.state)
@@ -522,9 +523,10 @@ class TLDetector(object):
                           
         self.last_pose = self.pose
                     
-        light_wp = closest_light_index
+        #light_wp = closest_light_index
 #        light = None
         if light:
+            light_wp = closest_light_index
             state = self.get_light_state(light)
             return light_wp, state
 
