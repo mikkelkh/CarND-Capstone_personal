@@ -146,7 +146,6 @@ class TLClassifier(object):
         return cv2.bitwise_and(img, img, mask = red_mask)
     
     def classify_tl_cnn(self, image_np, boxes, classes, scores, thickness=4):
-        rospy.loginfo("Deep learning")
         """Draw bounding boxes on the image"""
         for i in range(len(boxes)):
             bot, left, top, right = boxes[i, ...]
@@ -176,7 +175,6 @@ class TLClassifier(object):
 #                  cv2.putText(image_np, text, (int(left), int(bot)), cv2.FONT_HERSHEY_SIMPLEX, 
 #                                               1, (0,0,255), 2, lineType=cv2.LINE_AA)
 #                  return image_np, True
-        print("Green")
         return image_np, False    
     
     def classify_red_tl(self, image_np, boxes, classes, scores, thickness=4):
