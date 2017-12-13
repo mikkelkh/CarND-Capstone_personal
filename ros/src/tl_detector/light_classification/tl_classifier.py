@@ -298,8 +298,8 @@ class TLClassifier(object):
             print("time: inference {:.6f} post-processing {:.6f}".format(time_inference, time_img_processing))
         
 
-        fimage = DEBUG_DIR + 'image' + str(self.num_image) + '.png'
-        cv2.imwrite(fimage, pred_image)
+        #fimage = DEBUG_DIR + 'image' + str(self.num_image) + '.png'
+        #cv2.imwrite(fimage, pred_image)
         self.num_image += 1
 
         if is_red:
