@@ -1,4 +1,4 @@
-from styx_msgs.msg import TrafficLight
+
 
 import tensorflow as tf
 import numpy as np
@@ -14,9 +14,10 @@ CLASS_TRAFFIC_LIGHT = 10
 MODEL_DIR = 'light_classification/models/'
 IMG_DIR = 'light_classification/img/'
 DEBUG_DIR = 'light_classification/debug/'
+CLASSIFIER = '1513151224'
 
 class TLClassifier(object):
-    def __init__(self, profiling=True):
+    def __init__(self, profiling=True, deep_learning=True):
         if not os.path.exists(DEBUG_DIR):
             os.makedirs(DEBUG_DIR)
         #rospy.logwarn("%s", os.getcwd())
@@ -42,24 +43,50 @@ class TLClassifier(object):
         self.detection_classes = detection_graph.get_tensor_by_name('detection_classes:0')
 
         self.profiling = profiling
-
+        self.deep_learning = deep_learning
+        
+        # Load traffic light classifier
+        self.classifier = MODEL_DIR + CLASSIFIER
+        graph_file = os.path.join(self.classifier,'saved_model.pb')
+        tf.saved_model.loader.load(self.sess, [tf.saved_model.tag_constants.SERVING], self.classifier)        
+        self.predictor = tf.contrib.predictor.from_saved_model(self.classifier)
+        
         # the very first decoding is slow: al inits are done
         # => do that in advance before real decoding
         for i in range(2):
             #test_image = cv2.imread('light_classification/img/left0144.jpg')
             test_image = cv2.imread(IMG_DIR + 'left0144.jpg')
-            pred_image, is_red = self.detect_tl(test_image)
+#            pred_image, is_red = self.detect_tl(test_image)
+            image_np, box_coords, classes, scores = self.detect_tl(test_image)
+            
+            # Traditional traffic light classifier
+            pred_image, is_red = self.classify_tl(image_np, box_coords, classes, scores)
             if is_red:
-                print("RED")
+                print("Traditional classifier: RED")
             else:
-                print("NOT RED")
+                print("Traditional classifier: NOT RED")
+                
+            # Deep learning traffic light classifier
+            pred_image, is_red = self.classify_tl_cnn(image_np, box_coords, classes, scores)
+            if is_red:
+                print("Deep learning classifier: RED")
+            else:
+                print("Deep learning classifier: NOT RED")                
+            
             #cv2.imwrite("light_classification/img/pred_image.png", pred_image)
             cv2.imwrite(IMG_DIR + 'pred_image.png', pred_image)
+            
+            
+#        self.classifier_model = '/home/mikkel/udacity/Term3/CarND-Capstone_personal/ros/src/tl_detector/light_classification/models/1512995837/'
+#        self.classifier = tf.saved_model.loader.load(self.sess, ['serve'], self.classifier_model)
 
         rospy.logwarn("----------------------------------------------------------------------------------")
         rospy.logwarn("TENSORFLOW init done ... READY TO GO")
         rospy.logwarn("----------------------------------------------------------------------------------")
         self.num_image = 1
+
+    def _float32_feature(self, value):
+        return tf.train.Feature(float_list=tf.train.FloatList(value=value))    
 
     def load_graph(self, graph_file, use_xla=False):
         config = tf.ConfigProto()
@@ -78,13 +105,14 @@ class TLClassifier(object):
             print("number of operations = %d" % n_ops)
             return sess, ops
 
-    def filter_boxes(self, min_score, boxes, scores, classes):
-        """Return boxes with a confidence >= `min_score`"""
+    def filter_boxes(self, min_score, boxes, scores, classes, keep_classes=None):
+        """Return traffic light boxes with a confidence >= `min_score`"""
         n = len(classes)
         idxs = []
         for i in range(n):
             if scores[i] >= min_score:
-                idxs.append(i)
+                if ((keep_classes is None) or (np.isin([int(classes[i])],keep_classes)[0])):
+                    idxs.append(i)
         filtered_boxes = boxes[idxs, ...]
         filtered_scores = scores[idxs, ...]
         filtered_classes = classes[idxs, ...]
@@ -117,62 +145,95 @@ class TLClassifier(object):
         red_mask = cv2.inRange(img, lower, upper)
         return cv2.bitwise_and(img, img, mask = red_mask)
     
+    def classify_tl_cnn(self, image_np, boxes, classes, scores, thickness=4):
+        rospy.loginfo("Deep learning")
+        """Draw bounding boxes on the image"""
+        for i in range(len(boxes)):
+            bot, left, top, right = boxes[i, ...]
+            class_id = int(classes[i])
+            score = scores[i]
+#            if class_id == CLASS_TRAFFIC_LIGHT:
+            h = top - bot
+            w = right - left
+            if h <= 1.5 * w:
+                continue # Truncated Traffic Ligth box
+#            cv2.rectangle(image_np,(left, top), (right, bot), (255, 0, 0), thickness) # BGR format for color
+            tl_img = image_np[int(bot):int(top), int(left):int(right)]
+            
+            equal_size_img = cv2.resize(tl_img,dsize=(30,90))
+            equal_size_img = np.asarray(equal_size_img, dtype=np.float32)    
+            model_input= tf.train.Example(features=tf.train.Features(feature={'x': self._float32_feature(equal_size_img.reshape(-1))})) 
+            model_input=model_input.SerializeToString()
+            output_dict= self.predictor({"inputs":[model_input]})
+
+            if output_dict['classes'][0]=='red':
+                return image_np, True
+              # if normalized center of mass of RED points 
+#              # is in the upper part of detected Traffic Light Box
+#              # THEN it is a RED traffic light
+#              if npoints > 10 and mean_row < 0.33:
+#                  text = "RED LIGHT score=%.3f" % score
+#                  cv2.putText(image_np, text, (int(left), int(bot)), cv2.FONT_HERSHEY_SIMPLEX, 
+#                                               1, (0,0,255), 2, lineType=cv2.LINE_AA)
+#                  return image_np, True
+        print("Green")
+        return image_np, False    
+    
     def classify_red_tl(self, image_np, boxes, classes, scores, thickness=4):
         """Draw bounding boxes on the image"""
         for i in range(len(boxes)):
             bot, left, top, right = boxes[i, ...]
             class_id = int(classes[i])
             score = scores[i]
-            if class_id == CLASS_TRAFFIC_LIGHT:
-                h = top - bot
-                w = right - left
-                if h <= 1.5 * w:
-                    continue # Truncated Traffic Ligth box
-                cv2.rectangle(image_np,(left, top), (right, bot), (255, 0, 0), thickness) # BGR format for color
-                tl_img = image_np[int(bot):int(top), int(left):int(right)]
-    
-                tl_img_simu = self.select_red_simu(tl_img) # SELECT RED
-                tl_img_real = self.select_lighton_real(tl_img) # SELECT TL
-                tl_img = (tl_img_simu + tl_img_real) / 2
-    
-                gray_tl_img = cv2.cvtColor(tl_img, cv2.COLOR_RGB2GRAY)
-                nrows, ncols = gray_tl_img.shape[0], gray_tl_img.shape[1]
-    
-                # compute center of mass of RED points
-                mean_row = 0
-                mean_col = 0
-                npoints = 0
-                for row in range(nrows):
-                    for col in range(ncols):
-                        if (gray_tl_img[row, col] > 0): 
-                            mean_row += row
-                            mean_col += col
-                            npoints += 1
-                if npoints > 0:
-                  mean_row = float(mean_row / npoints) / nrows
-                  mean_col = float(mean_col / npoints) / ncols
-                  #print(mean_row, mean_col, npoints)
-    
-                  # if normalized center of mass of RED points 
-                  # is in the upper part of detected Traffic Light Box
-                  # THEN it is a RED traffic light
-                  if npoints > 10 and mean_row < 0.33:
-                      text = "RED LIGHT score=%.3f" % score
-                      cv2.putText(image_np, text, (int(left), int(bot)), cv2.FONT_HERSHEY_SIMPLEX, 
-                                                   1, (0,0,255), 2, lineType=cv2.LINE_AA)
-                      return image_np, True
+#            if class_id == CLASS_TRAFFIC_LIGHT:
+            h = top - bot
+            w = right - left
+            if h <= 1.5 * w:
+                continue # Truncated Traffic Ligth box
+            cv2.rectangle(image_np,(left, top), (right, bot), (255, 0, 0), thickness) # BGR format for color
+            tl_img = image_np[int(bot):int(top), int(left):int(right)]
+
+            tl_img_simu = self.select_red_simu(tl_img) # SELECT RED
+            tl_img_real = self.select_lighton_real(tl_img) # SELECT TL
+            tl_img = (tl_img_simu + tl_img_real) / 2
+
+            gray_tl_img = cv2.cvtColor(tl_img, cv2.COLOR_RGB2GRAY)
+            nrows, ncols = gray_tl_img.shape[0], gray_tl_img.shape[1]
+
+            # compute center of mass of RED points
+            mean_row = 0
+            mean_col = 0
+            npoints = 0
+            for row in range(nrows):
+                for col in range(ncols):
+                    if (gray_tl_img[row, col] > 0): 
+                        mean_row += row
+                        mean_col += col
+                        npoints += 1
+            if npoints > 0:
+              mean_row = float(mean_row / npoints) / nrows
+              mean_col = float(mean_col / npoints) / ncols
+              #print(mean_row, mean_col, npoints)
+
+              # if normalized center of mass of RED points 
+              # is in the upper part of detected Traffic Light Box
+              # THEN it is a RED traffic light
+              if npoints > 10 and mean_row < 0.33:
+                  text = "RED LIGHT score=%.3f" % score
+                  cv2.putText(image_np, text, (int(left), int(bot)), cv2.FONT_HERSHEY_SIMPLEX, 
+                                               1, (0,0,255), 2, lineType=cv2.LINE_AA)
+                  return image_np, True
         return image_np, False
 
     def detect_tl(self, image):
-        start = timer()
         trt_image = np.copy(image)
         image_np = np.expand_dims(np.asarray(trt_image, dtype=np.uint8), 0)
     
-        start_inference = timer()
+        
         # Actual detection.
         (boxes, scores, classes) = self.sess.run([self.detection_boxes, self.detection_scores, self.detection_classes], 
                                             feed_dict={self.image_tensor: image_np})
-        end_inference = timer()
+        
     
         # Remove unnecessary dimensions
         boxes = np.squeeze(boxes)
@@ -180,8 +241,8 @@ class TLClassifier(object):
         classes = np.squeeze(classes)
     
         confidence_cutoff = 0.8
-        # Filter boxes with a confidence score less than `confidence_cutoff`
-        boxes, scores, classes = self.filter_boxes(confidence_cutoff, boxes, scores, classes)
+        # Filter traffic light boxes with a confidence score less than `confidence_cutoff`
+        boxes, scores, classes = self.filter_boxes(confidence_cutoff, boxes, scores, classes, keep_classes=[CLASS_TRAFFIC_LIGHT])
     
         # The current box coordinates are normalized to a range between 0 and 1.
         # This converts the coordinates actual location on the image.
@@ -189,18 +250,20 @@ class TLClassifier(object):
         width = image_np.shape[1]
         height = image_np.shape[0]
         box_coords = self.to_image_coords(boxes, height, width)
-    
+        
+        return image_np, box_coords, classes, scores
+        
+    def classify_tl(self,image_np, box_coords, classes, scores):
         # Each class with be represented by a differently colored box
-        image_np, is_red = self.classify_red_tl(image_np, box_coords, classes, scores)
-        end = timer()
+        if self.deep_learning:
+            image_np, is_red = self.classify_tl_cnn(image_np, box_coords, classes, scores)
+        else:
+            image_np, is_red = self.classify_red_tl(image_np, box_coords, classes, scores)
     
-        if self.profiling:
-            time_inference = end_inference - start_inference
-            time_img_processing = (end - start) - time_inference
-            print("time: inference {:.6f} post-processing {:.6f}".format(time_inference, time_img_processing))
         return image_np, is_red
 
     def get_classification(self, image):
+        from styx_msgs.msg import TrafficLight
         """Determines the color of the traffic light in the image
 
         Args:
@@ -210,8 +273,20 @@ class TLClassifier(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
 
         """
-        # light color prediction
-        pred_image, is_red = self.detect_tl(image)
+        # light detection        
+        start = timer()
+        image_np, box_coords, classes, scores = self.detect_tl(image)
+        end_inference = timer()
+        
+        # light color classification
+        pred_image, is_red = self.classify_tl(image_np, box_coords, classes, scores)
+        end = timer()
+        
+        if self.profiling:
+            time_inference = end_inference - start
+            time_img_processing = (end - start) - time_inference
+            print("time: inference {:.6f} post-processing {:.6f}".format(time_inference, time_img_processing))
+        
         fimage = DEBUG_DIR + 'image' + str(self.num_image) + '.png'
         cv2.imwrite(fimage, pred_image)
         self.num_image += 1
