@@ -8,10 +8,11 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from light_classification.tl_classifier import TLClassifier
 import tf
-import cv2
 import yaml
 import numpy as np
 import os
+
+import math
 
 import math
 
@@ -204,6 +205,7 @@ class TLDetector(object):
 
     def pose_cb(self, msg):
         self.pose = msg
+        
         # Philippe
         self.ego_x = msg.pose.position.x
         self.ego_y = msg.pose.position.y
@@ -513,10 +515,9 @@ class TLDetector(object):
         if light:
             state = self.get_light_state(light)
             return light_wp, state
-        
-#        self.waypoints = None
-        
-#        return idx_waypoint_traffic_light, TrafficLight.UNKNOWN
+
+        return -1, TrafficLight.UNKNOWN
+
 
 if __name__ == '__main__':
     try:

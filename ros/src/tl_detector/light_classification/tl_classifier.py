@@ -16,6 +16,21 @@ IMG_DIR = 'light_classification/img/'
 DEBUG_DIR = 'light_classification/debug/'
 CLASSIFIER = '1513151224'
 
+import tensorflow as tf
+import numpy as np
+import cv2
+import os
+import rospy
+
+from timeit import default_timer as timer
+
+
+CLASS_TRAFFIC_LIGHT = 10
+
+MODEL_DIR = 'light_classification/models/'
+IMG_DIR = 'light_classification/img/'
+DEBUG_DIR = 'light_classification/debug/'
+
 class TLClassifier(object):
     def __init__(self, profiling=True, deep_learning=True):
         if not os.path.exists(DEBUG_DIR):
@@ -56,6 +71,7 @@ class TLClassifier(object):
         for i in range(2):
             #test_image = cv2.imread('light_classification/img/left0144.jpg')
             test_image = cv2.imread(IMG_DIR + 'left0144.jpg')
+            
 #            pred_image, is_red = self.detect_tl(test_image)
             image_np, box_coords, classes, scores = self.detect_tl(test_image)
             
@@ -75,10 +91,6 @@ class TLClassifier(object):
             
             #cv2.imwrite("light_classification/img/pred_image.png", pred_image)
             cv2.imwrite(IMG_DIR + 'pred_image.png', pred_image)
-            
-            
-#        self.classifier_model = '/home/mikkel/udacity/Term3/CarND-Capstone_personal/ros/src/tl_detector/light_classification/models/1512995837/'
-#        self.classifier = tf.saved_model.loader.load(self.sess, ['serve'], self.classifier_model)
 
         rospy.logwarn("----------------------------------------------------------------------------------")
         rospy.logwarn("TENSORFLOW init done ... READY TO GO")
@@ -231,7 +243,6 @@ class TLClassifier(object):
         # Actual detection.
         (boxes, scores, classes) = self.sess.run([self.detection_boxes, self.detection_scores, self.detection_classes], 
                                             feed_dict={self.image_tensor: image_np})
-        
     
         # Remove unnecessary dimensions
         boxes = np.squeeze(boxes)
@@ -239,6 +250,7 @@ class TLClassifier(object):
         classes = np.squeeze(classes)
     
         confidence_cutoff = 0.8
+        
         # Filter traffic light boxes with a confidence score less than `confidence_cutoff`
         boxes, scores, classes = self.filter_boxes(confidence_cutoff, boxes, scores, classes, keep_classes=[CLASS_TRAFFIC_LIGHT])
     
@@ -285,6 +297,7 @@ class TLClassifier(object):
             time_img_processing = (end - start) - time_inference
             print("time: inference {:.6f} post-processing {:.6f}".format(time_inference, time_img_processing))
         
+
         fimage = DEBUG_DIR + 'image' + str(self.num_image) + '.png'
         cv2.imwrite(fimage, pred_image)
         self.num_image += 1
