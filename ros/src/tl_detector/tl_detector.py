@@ -70,7 +70,7 @@ class TLDetector(object):
         self.light_wp = -1
         self.state_red_count = -1
 
-        # Peter and Mikkel
+        
         self.tree = []
         self.image_count = 0
         self.waypoints_prepared = False
@@ -78,18 +78,14 @@ class TLDetector(object):
         self.update_waypoint = False
         self.last_pose = None
 
-#        sub6 = rospy.Subscriber('/image_color', Image, self.image_cb)
-        
-        
-        self.light_classifier = TLClassifier()
-
         # Philippe
 #        sub6 = rospy.Subscriber('/image_color', Image, self.image_callback)
-#        self.light_classifier = TLClassifier()
+#        self.light_classifier = TLClassifier(deep_learning=False)
 #        self.loop()
 
-#        rospy.spin()
+        # Peter and Mikkel
         sub6 = rospy.Subscriber('/image_color', Image, self.image_callback)
+        self.light_classifier = TLClassifier(deep_learning=True)
         self.loop2()
 
     # -----------------------------------------------------------------------------------
@@ -155,12 +151,6 @@ class TLDetector(object):
     def image_callback(self, msg):
         if self.num_waypoints > 0 and self.ego_x is not None:
             self.camera_image = msg
-            #if (closest_light_red_index >= 0):
-            #    # RED or YELLOW light detected
-            #    self.light_wp = self.stop_line_waypoints[closest_light_red_index]
-            #    self.state_red_count = STATE_COUNT_THRESHOLD
-            #else:
-            #    self.state_red_count -= 1
 
     def get_closest_wp_index(self, x, y, wp1, wp2): 
         closest_dist = 1e10
@@ -194,7 +184,6 @@ class TLDetector(object):
             closest_light_red_dist = 1e10
             for i in range(len(self.lights)):
                 light = self.lights[i]
-                #if light.state == TrafficLight.RED or light.state == TrafficLight.YELLOW:
                 if light.state == TrafficLight.RED:
                     dist = self.stop_line_waypoints[i] - self.closest_wp_index
                     # something realistic in our Field Of View
@@ -279,63 +268,6 @@ class TLDetector(object):
             of times till we start using it. Otherwise the previous stable state is
             used.
             '''
-#            if self.state != state:
-#                self.state_count = 0
-#                self.state = state
-#            elif self.state_count >= STATE_COUNT_THRESHOLD:
-#                self.last_state = self.state
-#                light_wp = light_wp if state == TrafficLight.RED else -1
-#                self.last_wp = light_wp
-#                self.upcoming_red_light_pub.publish(Int32(light_wp))
-#            else:
-#                self.upcoming_red_light_pub.publish(Int32(self.last_wp))
-#            self.state_count += 1
-
-
-#    def get_closest_waypoint(self, pose):
-#        """Identifies the closest path waypoint to the given position
-#            https://en.wikipedia.org/wiki/Closest_pair_of_points_problem
-#        Args:
-#            pose (Pose): position to match a waypoint to
-#
-#        Returns:
-#            int: index of the closest waypoint in self.waypoints
-#
-#        """
-#
-#        # The closest waypoint is determiend using a KDtree - just to be difficult.
-#        useKDTree = True
-#        if(self.waypoints_prepared == False) or self.update_waypoint:
-#            # Placing waypoints in list
-#            self.waypointlist = np.array([[waypoint.pose.pose.position.x,
-#                                           waypoint.pose.pose.position.y,
-#                                           waypoint.pose.pose.orientation.x,
-#                                           waypoint.pose.pose.orientation.y,
-#                                           waypoint.pose.pose.orientation.z,
-#                                           waypoint.pose.pose.orientation.w] for waypoint in self.waypoints])
-#            
-#            # Determining the KDTree to faster measure distance to closest point
-#            if useKDTree:
-#                self.tree = spatial.KDTree(self.waypointlist[:,0:2],1)
-#            self.waypoints_prepared = True
-#            self.update_waypoint = False
-#            
-#        
-#        # Get closest idx. 
-#        if(self.waypoints_prepared):
-#            if useKDTree:
-#                dist,idxs = self.tree.query(pose)
-#                self.idx = idxs
-#            else:
-#                # Otherwise calculate it
-#                dist = np.sum(np.power(pose-self.waypointlist[:,0:2],2),axis=1)
-#                self.idx = np.argmin(dist)
-#        else:
-#            self.idx = 0
-#            dist = 0
-#            
-#        #print("GetClosestWayPoint: ", self.idx,dist)
-#        return self.idx
 
     def get_light_state(self, light):
         """Determines the current color of the traffic light
@@ -367,103 +299,9 @@ class TLDetector(object):
 
         """
         light = None
-
-#        idx_waypoint_traffic_light = -1
-        
-        
-        # This is only processed if waypoints have been received. 
-#        if self.num_waypoints > 0:
-            
-            # List of positions that correspond to the line to stop in front of for a given intersection
-#            stop_line_positions = np.array(self.config['stop_line_positions'])
-            #TODO find the closest visible traffic light (if one exists)
-#            idxs_waypoint_stop = self.get_closest_waypoint(stop_line_positions)
             
         # For a valid vehicle pose. Get the closest waypoint of vehicle.         
         if (self.lights) and (self.pose):
-#                vehicle_pose = np.array([[ self.pose.pose.position.x,self.pose.pose.position.y]])
-#                idx_waypoint_car = self.get_closest_waypoint(vehicle_pose)        
-#                
-#            
-#                idx_traffic_light = np.argmax((idxs_waypoint_stop-idx_waypoint_car)>0)
-#                idx_waypoint_traffic_light = idxs_waypoint_stop[idx_traffic_light]
-#                
-#                # Get closest traffic light. 
-#                tmpLight = self.lights[idx_traffic_light]
-#                
-#                # Get pose of the waypoint closest to the traffic light. 
-#                poseLight = self.waypointlist[idx_waypoint_traffic_light,:]
-#                orientationLight = poseLight[2:]
-#                positionLight = poseLight[:2]
-#                
-#                # Difference between vehicle position and traffic light position. 
-#                diff_position = positionLight-np.array(vehicle_pose)
-#                
-#                # Difference in orientation (calculated in quaternions)
-##                o1 = orientationLight
-##                o2 = self.pose.pose.orientation
-#                
-#                # Angle difference between light-orientation and vehicle-orientation
-##                q3 = np.quaternion(o1[0],o1[1],o1[2],o1[3]) * np.quaternion(o2.x,o2.y,o2.z,o2.w).inverse()
-##                q3 = quaternion_multiply([o1[0],o1[1],o1[2],o1[3]],[o2.x,o2.y,o2.z,o2.w])
-##                q3 = tf.transformations.unit_vector(q3)
-##                q3 = quaternion_multiply([o1[0],o1[1],o1[2],o1[3]],[o2[0],o2[1],o2[2],o2[3]])
-##                diff_angle = euler_from_quaternion(quaternion.as_float_array(q3))[2]
-##                diff_angle = euler_from_quaternion(q3)[2]
-#                
-##                q3_2 = np.quaternion(o1[0],o1[1],o1[2],o1[3]) * np.quaternion(o2.x,o2.y,o2.z,o2.w).inverse()
-##                diff_angle_2 = euler_from_quaternion(quaternion.as_float_array(q3_2))[2]
-#                
-#                # Distance between ligt and vehicle
-#                diff_dist = np.sqrt(np.sum(np.power(diff_position,2)))
-#                
-##                rospy.loginfo("dist: %s, diff_position: %s, angle: %s, angle2=%s", diff_dist, diff_position, diff_angle, diff_angle_2)
-#                rospy.loginfo("dist: %s, diff_position: %s", diff_dist, diff_position)
-#                
-##                in_view_dist = 140.0
-#                out_of_view_max = 140.0
-#                out_of_view_min = 10.0
-##                in_view_angle = 0.13
-#                
-#                
-#                # Store images with count, label, distance. 
-#                # e.g. 0010_0_100.jpg is the name of image 10 with label 0 (red light) 100 meter from traffic light
-#                if self.has_image:
-#                    
-#                    # Save factor defines how often an image is stored.
-#                    # Five-times more images are stored for yellow and green light 
-#                    save_factor = 10
-#                    saveImage = False
-#                    if (tmpLight.state==0): # RED LIGHT --> Slow save factor
-#                        save_factor = 10
-#                    elif(tmpLight.state==1):  # Yellow LIGHT --> Faster save factor
-#                        save_factor = 2
-#                    elif(tmpLight.state==2):  # Green LIGHT --> Faster save factor
-#                        save_factor = 2
-#                    
-#                    # Defining when a traffic light is in view
-#                    if ((diff_dist <= out_of_view_max) and (diff_dist >= out_of_view_min)): # and (np.abs(diff_angle)<in_view_angle):          
-#                        saveImage = True
-#                        strState = str(tmpLight.state)
-#                        rospy.loginfo("TrafficLight in view: ")
-#                    
-#                    # Defining when a traffic light is out of view
-#                    if (diff_dist >= (out_of_view_max+100) ): # or (np.abs(diff_angle)>(in_view_angle+0.05)):
-#                        saveImage = True
-#                        save_factor = 10
-#                        strState = str(4)
-#                        rospy.loginfo("TrafficLight definitly out off view: ")
-#                        
-#                    # Stores images to folder defined in (self.dirData)
-#                    if saveImage and (np.mod(self.image_count,save_factor)==0):
-#                        #tmpName = str(np.round(time.time(),decimals=2)).replace(".","_")
-#                        tmpName = str(self.image_count).zfill(4)
-#                        dirOut = os.path.join(self.dirData,tmpName+"_"+strState+"_"+ str(int(diff_dist)) + '.jpg')
-#                        cv2.imwrite(dirOut,self.camera_image)
-#                        rospy.loginfo("SaveImage")
-                    
-                    
-                    
             # search wp closest to our car
             if self.closest_wp_index is None:
                 wp_min = 0
@@ -477,9 +315,6 @@ class TLDetector(object):
             closest_light_index = -1
             closest_light_dist = 1e10
             for i in range(len(self.lights)):
-#                    light = self.lights[i]
-                #if light.state == TrafficLight.RED or light.state == TrafficLight.YELLOW:
-#                    if light.state == TrafficLight.RED:
                 dist = self.stop_line_waypoints[i] - self.closest_wp_index
                 # something realistic in our Field Of View
                 if dist >= 0 and dist < 200 and dist  < closest_light_dist:
@@ -523,8 +358,7 @@ class TLDetector(object):
                           
         self.last_pose = self.pose
                     
-        #light_wp = closest_light_index
-#        light = None
+
         if light:
             light_wp = closest_light_index
             state = self.get_light_state(light)
