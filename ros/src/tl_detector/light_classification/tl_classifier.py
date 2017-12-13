@@ -60,7 +60,7 @@ class TLClassifier(object):
             image_np, box_coords, classes, scores = self.detect_tl(test_image)
             
             # Traditional traffic light classifier
-            pred_image, is_red = self.classify_tl(image_np, box_coords, classes, scores)
+            pred_image, is_red = self.classify_red_tl(image_np, box_coords, classes, scores)
             if is_red:
                 print("Traditional classifier: RED")
             else:
@@ -111,7 +111,7 @@ class TLClassifier(object):
         idxs = []
         for i in range(n):
             if scores[i] >= min_score:
-                if ((keep_classes is None) or (np.isin([int(classes[i])],keep_classes)[0])):
+                if ((keep_classes is None) or (int(classes[i]) in keep_classes)):
                     idxs.append(i)
         filtered_boxes = boxes[idxs, ...]
         filtered_scores = scores[idxs, ...]
