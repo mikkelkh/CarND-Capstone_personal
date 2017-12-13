@@ -78,7 +78,7 @@ class TLDetector(object):
         self.update_waypoint = False
         self.last_pose = None
 
-        sub6 = rospy.Subscriber('/image_color', Image, self.image_cb)
+#        sub6 = rospy.Subscriber('/image_color', Image, self.image_cb)
         
         
         self.light_classifier = TLClassifier()
@@ -88,9 +88,21 @@ class TLDetector(object):
 #        self.light_classifier = TLClassifier()
 #        self.loop()
 
-        rospy.spin()
+#        rospy.spin()
+        sub6 = rospy.Subscriber('/image_color', Image, self.image_callback)
+        self.loop2()
 
     # -----------------------------------------------------------------------------------
+
+    def loop2(self):
+        # every 250 ms is OK on GTX 1080 TI: GPU decoding is arround 120 ms on GTX 1080 TI
+        # every 333ms ms, so we have some margin on lower end GPUs: eg on GTX 980 TI decoding is around 250 ms
+        # TESTED with GTX 1080 TI => Sould be OK with GTX TITAN X on Carla Self-Driving Car
+        rate = rospy.Rate(3)
+        while not rospy.is_shutdown():
+            if self.camera_image is not None:
+                self.image_cb(self.camera_image)
+            rate.sleep()
 
     def loop(self):
         # every 250 ms is OK on GTX 1080 TI: GPU decoding is arround 120 ms on GTX 1080 TI
