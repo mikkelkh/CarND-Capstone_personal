@@ -178,6 +178,8 @@ class TLClassifier(object):
             output_dict= self.predictor({"inputs":[model_input]})
 
             if output_dict['classes'][0]=='red':
+                text = "RED LIGHT score=%.3f" % score
+                cv2.putText(image_np, text, (int(left), int(bot)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, lineType=cv2.LINE_AA)
                 return image_np, True
               # if normalized center of mass of RED points 
 #              # is in the upper part of detected Traffic Light Box
@@ -298,8 +300,8 @@ class TLClassifier(object):
             print("time: inference {:.6f} post-processing {:.6f}".format(time_inference, time_img_processing))
         
 
-        #fimage = DEBUG_DIR + 'image' + str(self.num_image) + '.png'
-        #cv2.imwrite(fimage, pred_image)
+        fimage = DEBUG_DIR + 'image' + str(self.num_image) + '.png'
+        cv2.imwrite(fimage, pred_image)
         self.num_image += 1
 
         if is_red:
