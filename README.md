@@ -305,25 +305,6 @@ GPU WARNING:
 - ROS nodes Profiling
 - Traffic Light Detection optimization: reduce inference time (e.g. downsize image)
 
-### Collecting traffic light data in the Powerthrough Team
-This is only possible in the detector-branch. 
-The script will require a package (maybe we should avoid this at some point).
-
-       pip install --user numpy numpy-quaternion
-
-Change the directory to store files in.
-
-       export ROS_TEST_RESULTS_DIR=/home/user/data
-
-Run the simulator and use the following instructions to record data. 
-
-       cd [XXX]/CarND-Capstone/ros
-       source devel/setup.bash
-       rosrun launch/styx.launch
-
-A small script (Demo_SimpleReadTrafficLightData) for reading data is provided in the [XXX]/CarND-Capstone folder. 
-
-
 ### References
 
 ### Native Installation
