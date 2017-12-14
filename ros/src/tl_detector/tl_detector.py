@@ -71,7 +71,6 @@ class TLDetector(object):
         self.image_count = 0
         self.waypoints_prepared = False
         self.idx_traffic_light_found = False
-        self.update_waypoint = False
         self.last_pose = None
         
         sub1 = rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
@@ -215,11 +214,6 @@ class TLDetector(object):
 
     # this callback is called just once at start
     def waypoints_cb(self, msg):
-        # Peter and Mikkel
-        rospy.loginfo("WAYPOINTS_RECEIVED")
-        self.update_waypoint = True
-    
-        # Philippe
         if self.num_waypoints == 0:
             self.waypoints = msg.waypoints
             self.num_waypoints = len(self.waypoints)
@@ -244,10 +238,11 @@ class TLDetector(object):
 
         """
         if self.num_waypoints > 0 and self.ego_x is not None:
-            self.camera_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+            img = self.bridge.imgmsg_to_cv2(msg, "bgr8")
             self.has_image = True
             self.image_count = self.image_count+1
-            light_wp, state = self.process_traffic_lights()
+            
+            light_wp, state = self.process_traffic_lights(img)
     
     
             if state == TrafficLight.RED:
@@ -289,9 +284,9 @@ class TLDetector(object):
         if TRAINING is True:
             return TrafficLight.UNKNOWN
         else:
-            return self.light_classifier.get_classification(self.camera_image)
+            return self.light_classifier.get_classification(light)
 
-    def process_traffic_lights(self):
+    def process_traffic_lights(self, img):
         """Finds closest visible traffic light, if one exists, and determines its
             location and color
 
@@ -305,12 +300,12 @@ class TLDetector(object):
         # For a valid vehicle pose. Get the closest waypoint of vehicle.         
         if (self.lights) and (self.pose):
             # search wp closest to our car
-            if self.closest_wp_index is None:
-                wp_min = 0
-                wp_max = self.num_waypoints - 1
-            else:
-                wp_min = self.closest_wp_index - 200
-                wp_max = self.closest_wp_index + 200
+#            if self.closest_wp_index is None:
+            wp_min = 0
+            wp_max = self.num_waypoints - 1
+#            else:
+#                wp_min = self.closest_wp_index - 200
+#                wp_max = self.closest_wp_index + 200
             self.closest_wp_index = self.get_closest_wp_index(self.ego_x, self.ego_y, wp_min, wp_max)
 
             # simulate traffic light RED detection
@@ -355,15 +350,14 @@ class TLDetector(object):
                     # Stores images to test results folder
                     tmpName = str(self.image_count).zfill(4)
                     dirOut = os.path.join(self.dirData,tmpName+"_"+strState+"_"+ str(int(closest_light_dist)) + '.jpg')
-                    cv2.imwrite(dirOut,self.camera_image)
+                    cv2.imwrite(dirOut,img)
                     rospy.loginfo("SaveImage")
                           
         self.last_pose = self.pose
                     
-
         if light:
             light_wp = closest_light_index
-            state = self.get_light_state(light)
+            state = self.get_light_state(img)
             return light_wp, state
 
         return -1, TrafficLight.UNKNOWN
