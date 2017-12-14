@@ -110,12 +110,12 @@ class TLDetector(object):
             if self.camera_image is not None:
 
                 # search wp closest to our car
-                if self.closest_wp_index is None:
-                    wp_min = 0
-                    wp_max = self.num_waypoints - 1
-                else:
-                    wp_min = self.closest_wp_index - 200
-                    wp_max = self.closest_wp_index + 200
+#                if self.closest_wp_index is None:
+                wp_min = 0
+                wp_max = self.num_waypoints - 1
+#                else:
+#                    wp_min = self.closest_wp_index - 200
+#                    wp_max = self.closest_wp_index + 200
 
                 self.closest_wp_index = self.get_closest_wp_index(self.ego_x, self.ego_y, wp_min, wp_max)
 
@@ -172,12 +172,12 @@ class TLDetector(object):
         if self.num_waypoints > 0 and self.ego_x is not None:
 
             # search wp closest to our car
-            if self.closest_wp_index is None:
-                wp_min = 0
-                wp_max = self.num_waypoints - 1
-            else:
-                wp_min = self.closest_wp_index - 200
-                wp_max = self.closest_wp_index + 200
+#            if self.closest_wp_index is None:
+            wp_min = 0
+            wp_max = self.num_waypoints - 1
+#            else:
+#                wp_min = self.closest_wp_index - 200
+#                wp_max = self.closest_wp_index + 200
             self.closest_wp_index = self.get_closest_wp_index(self.ego_x, self.ego_y, wp_min, wp_max)
 
             # simulate traffic light RED detection

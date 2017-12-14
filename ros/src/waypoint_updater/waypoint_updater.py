@@ -126,12 +126,12 @@ class WaypointUpdater(object):
         rate = rospy.Rate(10) # 50Hz
         while not rospy.is_shutdown():
             if self.waypoints is not None and self.ego_x is not None:
-                if self.closest_wp_index is None:
-                    wp_min = 0
-                    wp_max = self.num_waypoints - 1
-                elif self.num_waypoints > 2 * LOOKAHEAD_WPS: # BUG FIX XXX
-                    wp_min = self.closest_wp_index - LOOKAHEAD_WPS
-                    wp_max = self.closest_wp_index + LOOKAHEAD_WPS
+#                if self.closest_wp_index is None:
+                wp_min = 0
+                wp_max = self.num_waypoints - 1
+#                elif self.num_waypoints > 2 * LOOKAHEAD_WPS: # BUG FIX XXX
+#                    wp_min = self.closest_wp_index - LOOKAHEAD_WPS
+#                    wp_max = self.closest_wp_index + LOOKAHEAD_WPS
 
                 self.closest_wp_index = self.get_closest_wp_index(wp_min, wp_max) 
                 planned_vel = self.get_waypoint_velocity(self.waypoints[self.closest_wp_index])
